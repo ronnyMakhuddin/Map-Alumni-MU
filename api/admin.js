@@ -11,7 +11,7 @@ import { sql, ADMIN_COLS, ensureSchema, getSettings, validateAlumni, readBody, s
 const HEX = /^#[0-9a-f]{6}$/i;
 
 export default async function handler(req, res) {
-  if (!sql) return send(res, 500, { error: 'DATABASE_URL belum diatur di Vercel.' });
+  if (!sql) return send(res, 500, { error: 'Database belum terhubung: hubungkan Neon di Vercel (Storage → Connect Database) lalu Redeploy.' });
   if (!process.env.ADMIN_KEY) return send(res, 503, { error: 'ADMIN_KEY belum diatur di Environment Variables Vercel.' });
   if (!isAdmin(req)) return send(res, 401, { error: 'Kata sandi admin salah.' });
   res.setHeader('Cache-Control', 'no-store');

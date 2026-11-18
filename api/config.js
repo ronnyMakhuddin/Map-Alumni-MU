@@ -2,7 +2,7 @@
 import { sql, ensureSchema, getSettings, send } from './_lib/db.js';
 
 export default async function handler(req, res) {
-  if (!sql) return send(res, 500, { error: 'DATABASE_URL belum diatur di Vercel.' });
+  if (!sql) return send(res, 500, { error: 'Database belum terhubung: hubungkan Neon di Vercel (Storage → Connect Database) lalu Redeploy.' });
   try {
     await ensureSchema();
     const s = await getSettings();

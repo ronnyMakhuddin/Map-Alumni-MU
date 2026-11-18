@@ -198,7 +198,7 @@
   function miniMap(el, lat, lng, onPick) {
     const has = isFinite(lat) && isFinite(lng);
     const m = L.map(el, { zoomControl: true, attributionControl: false }).setView(has ? [lat, lng] : DEF.pusatPeta, has ? 12 : 4);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 19 }).addTo(m);
+    Basemap.create('default').forEach((l) => l.addTo(m));
     let mk = has ? L.marker([lat, lng]).addTo(m) : null;
     L.Icon.Default.imagePath = 'vendor/images/';
     m.on('click', (e) => { if (mk) mk.setLatLng(e.latlng); else mk = L.marker(e.latlng).addTo(m); onPick(e.latlng.lat, e.latlng.lng); });

@@ -2,7 +2,15 @@
 import { neon } from '@neondatabase/serverless';
 import { timingSafeEqual } from 'node:crypto';
 
-const DB_URL = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+// Integrasi Neon di Vercel bisa memberi nama variabel berbeda (mis. STORAGE_DATABASE_URL, POSTGRES_URL)
+function findDbUrl() {
+  const env = process.env;
+  const pref = ['DATABASE_URL', 'POSTGRES_URL', 'NEON_DATABASE_URL'];
+  for (const k of pref) if (env[k]) return env[k];
+  const keys = Object.keys(env).filter((k) => /(DATABASE_URL|POSTGRES_URL)$/.test(k) && !/UNPOOLED|NON_POOLING/.test(k));
+  return keys.length ? env[keys[0]] : null;
+}
+const DB_URL = findDbUrl();
 // globalThis.__SQL__ hanya dipakai server lokal (scripts/dev-server.js) untuk database tiruan
 export const sql = globalThis.__SQL__ || (DB_URL ? neon(DB_URL) : null);
 

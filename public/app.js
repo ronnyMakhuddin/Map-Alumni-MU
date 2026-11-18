@@ -49,15 +49,7 @@
   const map = L.map('map', { zoomControl: false, attributionControl: true, worldCopyJump: true, minZoom: 3, maxZoom: 19 })
     .setView(C.pusatPeta, C.zoomAwal);
   map.attributionControl.setPrefix(false);
-  const LAYERS = {
-    default: [L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19, subdomains: 'abcd', attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · © <a href="https://carto.com/attributions">CARTO</a>' })],
-    satellite: [
-      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Citra © Esri, Maxar, Earthstar Geographics' }),
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', { maxZoom: 19, subdomains: 'abcd', attribution: '© OpenStreetMap · © CARTO' })
-    ],
-    terrain: [L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17, subdomains: 'abc', attribution: '© OpenStreetMap · SRTM · © OpenTopoMap (CC-BY-SA)' })]
-  };
+  const LAYERS = { default: Basemap.create('default'), satellite: Basemap.create('satellite'), terrain: Basemap.create('terrain') };
   LAYERS.default.forEach((l) => l.addTo(map));
   function setLayer(name) {
     LAYERS[S.layer].forEach((l) => map.removeLayer(l));

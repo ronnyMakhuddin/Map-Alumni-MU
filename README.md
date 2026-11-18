@@ -2,7 +2,7 @@
 
 Aplikasi web peta sebaran alumni dengan tampilan ala Google Maps dan halaman pembuka bertema pesantren.
 
-- **Peta gratis**: Leaflet + tile CARTO Voyager (mirip Google Maps), mode Satelit (Esri) & Medan (OpenTopoMap). Tanpa API key.
+- **Peta gratis tanpa API key**: Leaflet + OpenFreeMap (peta vektor, warna disesuaikan mirip Google Maps), mode Satelit (Esri) & Medan (OpenTopoMap). Bila WebGL tidak tersedia otomatis memakai tile OpenStreetMap.
 - **Filter**: tahun lulus (rentang), wilayah/provinsi, unit pendidikan, asrama. Bisa digabung dengan pencarian nama/kota/pekerjaan.
 - **Input lokasi**: alumni mengisi latitude/longitude manual, **Deteksi GPS**, atau **Pilih di peta** (geser pin). Kota & provinsi terisi otomatis (OpenStreetMap Nominatim).
 - **Privasi**: opsi "Samarkan lokasi (±1 km)" membulatkan koordinat di server sebelum disimpan. Nomor WA opsional.
@@ -53,4 +53,4 @@ Wajib: `nama, tahun_lulus, unit, lat, lng`. Template bisa diunduh dari jendela i
 - Tambahkan `?demo=1` di URL untuk melihat aplikasi dengan 180 data contoh (tidak menyentuh database).
 - Lokal: `npm install` lalu `npm run dev`. Tanpa `DATABASE_URL`, server memakai PGlite (Postgres di memori) dan sandi admin `admin`.
 
-Atribusi peta: © OpenStreetMap contributors, © CARTO, Esri, OpenTopoMap.
+Atribusi peta: © OpenStreetMap contributors, OpenFreeMap, OpenMapTiles, Esri, OpenTopoMap.
