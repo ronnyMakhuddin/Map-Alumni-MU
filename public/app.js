@@ -47,7 +47,7 @@
 
   // ================= MAP =================
   const map = L.map('map', { zoomControl: false, attributionControl: true, worldCopyJump: true, minZoom: 3, maxZoom: 19 })
-    .setView(C.pusatPeta, C.zoomAwal);
+    .setView(C.pusatPeta, Math.max(3, C.zoomAwal - 1));
   map.attributionControl.setPrefix(false);
   const LAYERS = { default: Basemap.create('default'), satellite: Basemap.create('satellite'), terrain: Basemap.create('terrain') };
   LAYERS.default.forEach((l) => l.addTo(map));
@@ -695,7 +695,7 @@
     if (m) { openDetail(+m[1], true); return; }
     if (S.all.length && !filterActive()) {
       const b = L.latLngBounds(S.all.map((a) => [a.lat, a.lng]));
-      map.flyToBounds(b, { padding: [40, 40], maxZoom: 9, duration: 1.4, paddingTopLeft: isDesktop() ? [500, 80] : [30, 130], paddingBottomRight: isDesktop() ? [40, 40] : [30, 200] });
+      map.flyToBounds(b, { padding: [40, 40], maxZoom: 9, duration: 2.2, easeLinearity: 0.15, paddingTopLeft: isDesktop() ? [500, 80] : [30, 130], paddingBottomRight: isDesktop() ? [40, 40] : [30, 200] });
     }
   }
   window.Intro.onStart = enterApp;

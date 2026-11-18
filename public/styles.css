@@ -34,7 +34,41 @@ svg { display: block; }
 .intro { position: fixed; inset: 0; z-index: 2000; overflow: hidden; color: #fff;
   background: radial-gradient(120% 70% at 50% 42%, #1A3170 0%, #10224F 35%, var(--navy-800) 65%, var(--navy-900) 100%);
   transition: opacity .9s ease, transform 1.1s cubic-bezier(.2,.7,.2,1); font-family: "Plus Jakarta Sans", Roboto, sans-serif; }
-.intro.leaving { opacity: 0; transform: scale(1.08); pointer-events: none; }
+/* --- transisi pembuka -> peta --- */
+@property --hole { syntax: '<length>'; inherits: false; initial-value: 0px; }
+.intro { --hole: 0px; }
+.intro.opening { pointer-events: none; animation: openHole 1.45s cubic-bezier(.65,0,.25,1) forwards;
+  -webkit-mask-image: radial-gradient(circle at 50% 40vh, transparent var(--hole), #000 calc(var(--hole) + 90px));
+          mask-image: radial-gradient(circle at 50% 40vh, transparent var(--hole), #000 calc(var(--hole) + 90px)); }
+@keyframes openHole { 0% { --hole: 0px; } 100% { --hole: 150vmax; } }
+.intro.opening .emblem { transition: transform 1.1s cubic-bezier(.6,0,.3,1), opacity .7s ease .3s; transform: scale(3.2); opacity: 0; }
+.intro.opening .intro-text, .intro.opening .intro-actions, .intro.opening .intro-skip, .intro.opening .skyline { transition: opacity .45s ease, transform .6s ease; opacity: 0; transform: translateY(24px); }
+.intro.opening .intro-text .reveal { transition-delay: 0s; }
+.intro .flash { position: absolute; left: 50%; top: 40vh; width: 12px; height: 12px; margin: -6px; border-radius: 50%; pointer-events: none; opacity: 0;
+  background: radial-gradient(circle, #fff 0%, rgba(255,240,200,.9) 30%, rgba(232,196,104,.35) 60%, transparent 72%); }
+.intro.opening .flash { animation: flash 1.2s cubic-bezier(.3,0,.2,1) forwards; }
+@keyframes flash { 0% { opacity: 0; transform: scale(1); } 25% { opacity: 1; } 100% { opacity: 0; transform: scale(140); } }
+.intro.leaving { opacity: 0; pointer-events: none; }
+
+html.no-prop .intro.opening { animation: fadeOut 1.2s ease forwards; -webkit-mask-image: none; mask-image: none; }
+@keyframes fadeOut { to { opacity: 0; } }
+
+/* aplikasi: sebelum masuk (di balik layar pembuka) & saat masuk */
+.app.pre .map { transform: scale(1.18); filter: blur(5px) brightness(.55) saturate(.7); }
+.app .map { transition: transform 1.6s cubic-bezier(.2,.7,.15,1), filter 1.3s ease; transform-origin: 50% 40%; }
+.app.pre .topbar, .app.pre .sheet, .app.pre .nav { opacity: 0; }
+.app.pre .fab-stack { opacity: 0 !important; }
+.app.pre .topbar { transform: translateY(-24px); }
+.app.pre .nav, .app.pre .sheet { translate: 0 40px; }
+.app.pre .fab-stack { translate: 24px 0; }
+.app.entering .topbar { transition: opacity .6s ease .75s, transform .7s cubic-bezier(.2,.8,.2,1) .75s; }
+.app.entering .fab-stack { transition: opacity .6s ease 1s, translate .7s cubic-bezier(.2,.8,.2,1) 1s; }
+.app.entering .sheet { transition: opacity .6s ease .95s, translate .8s cubic-bezier(.2,.8,.2,1) .95s, transform .35s cubic-bezier(.2,.75,.2,1); }
+.app.entering .nav { transition: opacity .6s ease .85s, translate .7s cubic-bezier(.2,.8,.2,1) .85s; }
+.app.entering .chips .chip { animation: chipIn .5s cubic-bezier(.2,.8,.2,1) both; }
+.app.entering .chips .chip:nth-child(1) { animation-delay: .95s; } .app.entering .chips .chip:nth-child(2) { animation-delay: 1.02s; }
+.app.entering .chips .chip:nth-child(3) { animation-delay: 1.09s; } .app.entering .chips .chip:nth-child(4) { animation-delay: 1.16s; }
+@keyframes chipIn { from { opacity: 0; transform: translateY(-8px) scale(.96); } }
 .intro-stars { position: absolute; inset: 0; width: 100%; height: 100%; }
 .intro-pattern { position: absolute; inset: 0; opacity: 0; transition: opacity 2s ease 2.8s;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='none' stroke='%23E8C468' stroke-width='.6'%3E%3Crect x='22' y='22' width='36' height='36'/%3E%3Crect x='22' y='22' width='36' height='36' transform='rotate(45 40 40)'/%3E%3Ccircle cx='40' cy='40' r='9'/%3E%3C/g%3E%3C/svg%3E");
