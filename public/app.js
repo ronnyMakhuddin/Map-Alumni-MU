@@ -423,7 +423,7 @@
     const years = (sel) => { let o = '<option value="">Pilih tahun</option>'; for (let y = cy; y >= 1950; y--) o += `<option ${+sel === y ? 'selected' : ''}>${y}</option>`; return o; };
     return `<form class="form" id="alumniForm" novalidate>
       <h2>${mine ? 'Perbarui data saya' : 'Tambah lokasi saya'}</h2>
-      <p class="lead">Tandai di mana Anda berada sekarang agar sahabat sesama alumni ${esc(C.namaPondok)} bisa saling menemukan.</p>
+      <p class="lead">Tandai lokasi rumah Anda saat ini agar sahabat sesama alumni ${esc(C.namaPondok)} bisa saling menemukan.</p>
       <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
       <p class="fgroup">Identitas</p>
       <div class="field"><label>Nama lengkap *</label><input name="nama" required maxlength="120" value="${esc(a.nama || '')}" autocomplete="name" /></div>
@@ -440,7 +440,7 @@
       </div>
       <div class="field"><label>No. WhatsApp (opsional, tampil publik)</label><input name="whatsapp" inputmode="tel" maxlength="20" value="${esc(a.whatsapp || '')}" placeholder="08xxxxxxxxxx" /></div>
 
-      <p class="fgroup">Lokasi saat ini</p>
+      <p class="fgroup">Lokasi rumah saat ini</p>
       <div class="loc-box">
         <div class="loc-btns">
           <button type="button" class="btn-tonal" id="btnGps">${ICON.gps}Deteksi GPS</button>
@@ -457,9 +457,9 @@
         <datalist id="dlProv">${C.provinsi.map((x) => `<option value="${esc(x)}">`).join('')}</datalist>
         <small style="color:var(--g-muted)" id="locHint">Kota & provinsi terisi otomatis setelah lokasi ditentukan.</small>
       </div>
-      <label class="check"><input type="checkbox" name="lokasi_samar" ${a.lokasi_samar === false ? '' : 'checked'} />
-        <span>Samarkan lokasi (±1 km)<small>Disarankan. Titik di peta dibulatkan sehingga alamat rumah tidak terlihat persis.</small></span></label>
-      <label class="check"><input type="checkbox" name="setuju" ${mine ? 'checked' : ''} />
+      <label class="check"><input type="checkbox" name="lokasi_samar" ${a.lokasi_samar === true ? 'checked' : ''} />
+        <span>Samarkan lokasi (±1 km)<small>Opsional. Titik di peta dibulatkan sehingga alamat rumah tidak terlihat persis.</small></span></label>
+      <label class="check"><input type="checkbox" name="setuju" checked />
         <span>Saya setuju data di atas ditampilkan untuk publik di peta alumni.</span></label>
       <p class="form-msg" id="formMsg"></p>
       <button class="btn-primary btn-block" type="submit" id="btnSubmit">${mine ? 'Simpan perubahan' : 'Simpan ke peta'}</button>

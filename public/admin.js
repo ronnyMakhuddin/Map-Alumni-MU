@@ -207,7 +207,7 @@
   }
 
   function editAlumni(r) {
-    const a = r || { approved: true, lokasi_samar: true };
+    const a = r || { approved: true, lokasi_samar: false };
     const cy = new Date().getFullYear();
     const yrs = (sel) => { let o = '<option value="">—</option>'; for (let y = cy; y >= 1950; y--) o += `<option ${+sel === y ? 'selected' : ''}>${y}</option>`; return o; };
     const units = [...new Set(S.settings.unit.map((u) => u.nama).concat(a.unit ? [a.unit] : []))];
@@ -232,7 +232,7 @@
         <datalist id="dlA">${S.settings.asrama.map((x) => `<option value="${esc(x)}">`).join('')}</datalist>
         <datalist id="dlP">${DEF.provinsi.map((x) => `<option value="${esc(x)}">`).join('')}</datalist>
         <div class="minimap" id="mm"></div><p class="hint">Klik peta untuk menentukan lokasi.</p>
-        <label class="check"><input type="checkbox" name="lokasi_samar" ${a.lokasi_samar === false ? '' : 'checked'} /><span>Samarkan lokasi (±1 km)</span></label>
+        <label class="check"><input type="checkbox" name="lokasi_samar" ${a.lokasi_samar === true ? 'checked' : ''} /><span>Samarkan lokasi (±1 km)</span></label>
         <label class="check"><input type="checkbox" name="approved" ${a.approved === false ? '' : 'checked'} /><span>Tampilkan di peta<small>Hapus centang untuk menyembunyikan tanpa menghapus.</small></span></label>
         <p class="err" id="fErr"></p>
       </form>
@@ -291,7 +291,7 @@
     if (!keys.includes('nama') || !keys.includes('tahun_lulus') || !keys.includes('unit') || !keys.includes('lat') || !keys.includes('lng'))
       return importHelp('Kolom wajib tidak ditemukan. Pastikan baris pertama berisi judul kolom.');
     const items = rows.slice(1).map((r) => { const o = {}; keys.forEach((k, i) => { if (COLS.includes(k) || k === 'approved') o[k] = (r[i] ?? '').trim(); }); return o; });
-    items.forEach((o) => { if (o.lokasi_samar !== undefined) o.lokasi_samar = !/^(0|false|tidak|no|n)$/i.test(o.lokasi_samar); if (o.approved !== undefined) o.approved = !/^(0|false|tidak|no|n)$/i.test(o.approved); });
+    items.forEach((o) => { if (o.lokasi_samar !== undefined) o.lokasi_samar = /^(1|true|ya|y|yes)$/i.test(String(o.lokasi_samar).trim()); if (o.approved !== undefined) o.approved = !/^(0|false|tidak|no|n)$/i.test(o.approved); });
     openModal(`<div class="m-head"><h3>Impor ${items.length} baris</h3><button class="icon-btn" data-x>${I.close}</button></div>
       <div class="m-body"><p>Pratinjau 10 baris pertama dari <b>${esc(file.name)}</b>. Baris yang tidak valid akan dilewati dan dilaporkan.</p>
       <div class="preview"><table><thead><tr>${['nama', 'tahun_lulus', 'unit', 'asrama', 'kota', 'lat', 'lng'].map((k) => `<th class="nosort">${k}</th>`).join('')}</tr></thead>

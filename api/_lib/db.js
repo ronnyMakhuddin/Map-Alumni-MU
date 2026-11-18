@@ -95,7 +95,7 @@ export function validateAlumni(body) {
     whatsapp: str(b.whatsapp, 20),
     lat: Number(String(b.lat ?? '').replace(',', '.')),
     lng: Number(String(b.lng ?? '').replace(',', '.')),
-    lokasi_samar: b.lokasi_samar !== false && b.lokasi_samar !== 'false' && b.lokasi_samar !== 0
+    lokasi_samar: b.lokasi_samar === true || b.lokasi_samar === 'true' || b.lokasi_samar === 1
   };
   if (!d.nama || d.nama.length < 2) return { error: 'Nama wajib diisi.' };
   if (!d.tahun_lulus || d.tahun_lulus < 1900 || d.tahun_lulus > year) return { error: 'Tahun lulus tidak valid.' };
