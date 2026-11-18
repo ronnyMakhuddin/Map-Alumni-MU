@@ -8,12 +8,17 @@ Aplikasi web peta sebaran alumni dengan tampilan ala Google Maps dan halaman pem
 - **Privasi**: opsi "Samarkan lokasi (±1 km)" membulatkan koordinat di server sebelum disimpan. Nomor WA opsional.
 - **Ubah/hapus data sendiri** dari perangkat yang sama (token edit disimpan di browser).
 - Tampilan mobile (bottom sheet + bottom nav) dan desktop (panel kiri + rail), statistik per wilayah/unit/asrama/dekade.
+- **Halaman admin** (`/admin.html`, berpassword): kelola data alumni (tambah, ubah, hapus, setujui/sembunyikan, aksi massal, impor & ekspor CSV), unit pendidikan (nama, warna pin, urutan), asrama, persetujuan data baru, dan lokasi pondok.
 
 ## Struktur
 
 ```
 public/            Frontend statis (index.html, styles.css, app.js, intro.js, config.js, vendor/)
-api/alumni.js      Vercel Serverless Function (GET/POST/PUT/DELETE) ke Neon Postgres
+public/admin.html  Halaman admin (admin.js, admin.css)
+api/alumni.js      API publik data alumni (GET/POST/PUT/DELETE)
+api/config.js      API publik daftar unit, asrama, pengaturan
+api/admin.js       API admin (wajib header x-admin-key = ADMIN_KEY)
+api/_lib/db.js     Koneksi Neon, skema, validasi
 scripts/schema.sql Skema tabel (dibuat otomatis oleh API saat pertama dipanggil)
 scripts/dev-server.js Server lokal
 ```
@@ -26,25 +31,26 @@ Data disimpan di schema **`peta_alumni`** (tabel `peta_alumni.alumni`), terpisah
 2. Di project Vercel: **Storage** → **Connect Database** → pilih database Neon yang sudah ada → Connect.
    Vercel otomatis menambahkan env `DATABASE_URL`. (Atau isi manual di Settings → Environment Variables.)
 3. **Redeploy** (Deployments → ⋯ → Redeploy) agar env terbaca.
-4. Opsional: tambahkan env `ADMIN_KEY` (string acak) untuk menghapus data lewat API dengan header `x-admin-key`.
+4. Tambahkan env **`ADMIN_KEY`** = kata sandi halaman admin (buat yang panjang & acak), lalu Redeploy.
+   Masuk admin di `https://<domain-anda>/admin.html`.
 
 ## Pengaturan
 
-Ubah `public/config.js`:
-- `unit` — daftar unit pendidikan & warna pin
-- `asrama` — daftar nama asrama (alumni tetap bisa mengetik nama lain)
-- `pusatPeta`, `zoomAwal`, `lokasiPondok` — titik awal & penanda lokasi pondok
+Unit pendidikan, asrama, lokasi pondok, dan persetujuan data baru diatur dari **halaman admin** (tersimpan di tabel `peta_alumni.pengaturan`).
+`public/config.js` hanya berisi nilai bawaan, titik awal peta (`pusatPeta`, `zoomAwal`), dan daftar provinsi.
 
-## Moderasi
+## Impor CSV
 
-Sembunyikan data tanpa menghapus (Neon SQL Editor):
-```sql
-update peta_alumni.alumni set approved = false where id = 123;
+Baris pertama = judul kolom (pemisah koma atau titik koma, cocok dengan "Save as CSV" dari Excel):
 ```
+nama,tahun_masuk,tahun_lulus,unit,asrama,provinsi,kota,pekerjaan,instansi,whatsapp,lat,lng,lokasi_samar
+```
+Wajib: `nama, tahun_lulus, unit, lat, lng`. Template bisa diunduh dari jendela impor.
+
 
 ## Mode contoh & lokal
 
 - Tambahkan `?demo=1` di URL untuk melihat aplikasi dengan 180 data contoh (tidak menyentuh database).
-- Lokal: `npm install` lalu `npm run dev` (tanpa `DATABASE_URL` memakai data sementara di memori).
+- Lokal: `npm install` lalu `npm run dev`. Tanpa `DATABASE_URL`, server memakai PGlite (Postgres di memori) dan sandi admin `admin`.
 
 Atribusi peta: © OpenStreetMap contributors, © CARTO, Esri, OpenTopoMap.

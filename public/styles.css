@@ -298,7 +298,7 @@ svg { display: block; }
 .drawer-head img { width: 44px; height: 44px; }
 .drawer-head b { display: block; font-size: 16px; font-weight: 500; }
 .drawer-head small { color: var(--g-muted); }
-.drawer-item { display: flex; align-items: center; gap: 20px; padding: 14px 20px; text-align: left; font-size: 14px; color: var(--g-text-2); }
+.drawer-item { text-decoration: none; display: flex; align-items: center; gap: 20px; padding: 14px 20px; text-align: left; font-size: 14px; color: var(--g-text-2); }
 .drawer-item:hover { background: var(--g-surface); }
 .drawer-item svg { width: 22px; height: 22px; fill: var(--g-muted); }
 .drawer-foot { margin-top: auto; padding: 16px 20px; color: var(--g-muted); font-size: 12px; line-height: 1.5; }

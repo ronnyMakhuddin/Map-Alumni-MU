@@ -80,11 +80,15 @@
       html: `<div class="pin${sel ? ' sel' : ''}"><svg viewBox="0 0 28 38"><path d="M14 0C6.3 0 0 6.2 0 13.9 0 24.3 14 38 14 38s14-13.7 14-24.1C28 6.2 21.7 0 14 0z" fill="${col}" stroke="rgba(0,0,0,.18)"/></svg><b>${esc(initials(a.nama))}</b></div>`
     });
   }
-  if (C.lokasiPondok) {
-    L.marker([C.lokasiPondok.lat, C.lokasiPondok.lng], { zIndexOffset: 1000, icon: L.divIcon({ className: '', iconSize: [34, 46], iconAnchor: [17, 45],
+  let pondokMarker = null;
+  function addPondok() {
+    if (pondokMarker) { map.removeLayer(pondokMarker); pondokMarker = null; }
+    if (!C.lokasiPondok) return;
+    pondokMarker = L.marker([C.lokasiPondok.lat, C.lokasiPondok.lng], { zIndexOffset: 1000, icon: L.divIcon({ className: '', iconSize: [34, 46], iconAnchor: [17, 45],
       html: '<div class="pin pin-pondok"><svg viewBox="0 0 28 38"><path d="M14 0C6.3 0 0 6.2 0 13.9 0 24.3 14 38 14 38s14-13.7 14-24.1C28 6.2 21.7 0 14 0z" fill="#0A1630"/><path d="M16 7a7 7 0 1 0 0 13 5.8 5.8 0 1 1 0-13z" fill="#E8C468"/></svg></div>' }) })
       .addTo(map).bindTooltip(esc(C.lokasiPondok.label || C.namaPondok), { direction: 'top', offset: [0, -40] });
   }
+  addPondok();
 
   function renderMarkers() {
     cluster.clearLayers(); markers.clear();
@@ -106,6 +110,13 @@
   async function load() {
     if (DEMO) return useDemo();
     try {
+      // Unit, asrama & lokasi pondok diatur dari halaman admin
+      const rc = await fetch('/api/config').then((x) => (x.ok ? x.json() : null)).catch(() => null);
+      if (rc && rc.data) {
+        if (Array.isArray(rc.data.unit) && rc.data.unit.length) C.unit = rc.data.unit;
+        if (Array.isArray(rc.data.asrama)) C.asrama = rc.data.asrama;
+        if ('lokasi_pondok' in rc.data) { C.lokasiPondok = rc.data.lokasi_pondok; addPondok(); }
+      }
       const r = await fetch(API, { headers: { Accept: 'application/json' } });
       if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
       const j = await r.json();
@@ -414,7 +425,7 @@
 
   // ================= FORM =================
   function viewForm() {
-    const mine = S.mine && S.all.find((x) => x.id === S.mine.id);
+    const mine = S.mine && (S.all.find((x) => x.id === S.mine.id) || S.mine.rec);
     const a = mine || {};
     const cy = new Date().getFullYear();
     const years = (sel) => { let o = '<option value="">Pilih tahun</option>'; for (let y = cy; y >= 1950; y--) o += `<option ${+sel === y ? 'selected' : ''}>${y}</option>`; return o; };
@@ -547,26 +558,28 @@
       d.lat = lat; d.lng = lng; delete d.setuju;
       const btn = $('#btnSubmit'); btn.disabled = true; btn.textContent = 'Menyimpan…';
       try {
-        let id, token;
+        let id, token, pending = false;
         if (S.demo) {
           id = S.mine ? S.mine.id : Date.now(); token = 'demo';
           if (d.lokasi_samar) { d.lat = Math.round(d.lat * 100) / 100; d.lng = Math.round(d.lng * 100) / 100; }
         } else if (S.mine) {
           const r = await fetch(`${API}?id=${S.mine.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'x-edit-token': S.mine.token }, body: JSON.stringify(d) });
           const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Gagal menyimpan.');
-          id = S.mine.id; token = S.mine.token;
+          id = S.mine.id; token = S.mine.token; pending = !!j.pending;
         } else {
           const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
           const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Gagal menyimpan.');
-          id = +j.id; token = j.edit_token;
+          id = +j.id; token = j.edit_token; pending = !!j.pending;
         }
         if (d.lokasi_samar) { d.lat = Math.round(d.lat * 100) / 100; d.lng = Math.round(d.lng * 100) / 100; }
-        S.mine = { id, token }; LS.set('mu_my_entry', S.mine);
         const rec = normalize({ ...d, id, tahun_masuk: d.tahun_masuk || null, whatsapp: d.whatsapp || null, created_at: new Date().toISOString() });
-        S.all = S.all.filter((x) => x.id !== id).concat(rec);
+        S.mine = { id, token, rec, pending }; LS.set('mu_my_entry', S.mine);
+        S.all = S.all.filter((x) => x.id !== id);
+        if (!pending) S.all.push(rec);
         endPick(true); clearFormMarker(); body.innerHTML = '';
-        applyFilters(); openDetail(id, true);
-        toast('Alhamdulillah, lokasi Anda tersimpan di peta.');
+        applyFilters();
+        if (pending) { setView('explore'); toast('Terima kasih! Data Anda akan tampil setelah disetujui admin.'); }
+        else { openDetail(id, true); toast('Alhamdulillah, lokasi Anda tersimpan di peta.'); }
       } catch (err) { msg.textContent = err.message; btn.disabled = false; btn.textContent = 'Simpan ke peta'; }
     });
   }
