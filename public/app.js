@@ -670,7 +670,7 @@
   $('#btnMenu').onclick = openDrawer;
   $$('.drawer-item').forEach((b) => b.onclick = () => {
     closeDrawer(); const act = b.dataset.act;
-    if (act === 'intro') { window.Intro.play(); }
+    if (act === 'intro') { $('#intro').classList.remove('hidden'); window.Intro.play(); }
     if (act === 'form') setView('form');
     if (act === 'share') shareLink(null);
     if (act === 'privacy') {
@@ -699,7 +699,24 @@
     }
   }
   window.Intro.onStart = enterApp;
+  // Pembuka: posisikan peta aplikasi tepat di atas Indonesia agar peta intro bisa "menyusut" ke sana
+  const IM = window.INDONESIA_MAP;
+  window.Intro.onPrepare = () => {
+    map.invalidateSize();
+    const d = isDesktop();
+    map.fitBounds([[IM.lat0, IM.lon0], [IM.lat1, IM.lon1]], { animate: false,
+      paddingTopLeft: d ? [520, 90] : [16, 130], paddingBottomRight: d ? [40, 40] : [16, 220] });
+  };
+  window.Intro.getRect = () => {
+    const a = map.latLngToContainerPoint([IM.lat1, IM.lon0]), b = map.latLngToContainerPoint([IM.lat0, IM.lon1]);
+    const r = map.getContainer().getBoundingClientRect();
+    return { x: r.left + a.x, y: r.top + a.y, w: b.x - a.x, h: b.y - a.y };
+  };
 
   setView('explore');
-  load().then(() => { if ($('#intro').classList.contains('hidden')) enterApp(); });
+  load().then(() => {
+    window.__alumniPts = S.all.map((a) => [a.lat, a.lng]);
+    window.dispatchEvent(new CustomEvent('alumni:data', { detail: window.__alumniPts }));
+    if ($('#intro').classList.contains('hidden')) enterApp();
+  });
 })();
