@@ -16,7 +16,7 @@ export default async function handler(req, res) {
       const rows = await sql.query(
         `select ${PUBLIC_COLS} from peta_alumni.alumni where approved order by tahun_lulus desc, nama asc limit 20000`
       );
-      return send(res, 200, { data: rows }, { 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=60' });
+      return send(res, 200, { data: rows }, { 'Cache-Control': 'no-store' });
     }
 
     if (req.method === 'POST') {

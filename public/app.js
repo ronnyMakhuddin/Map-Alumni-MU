@@ -99,27 +99,37 @@
   }
 
   // ================= DATA =================
-  async function load() {
+  async function load(silent) {
     if (DEMO) return useDemo();
     try {
       // Unit, asrama & lokasi pondok diatur dari halaman admin
-      const rc = await fetch('/api/config').then((x) => (x.ok ? x.json() : null)).catch(() => null);
+      const rc = await fetch('/api/config', { cache: 'no-store' }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
       if (rc && rc.data) {
         if (Array.isArray(rc.data.unit) && rc.data.unit.length) C.unit = rc.data.unit;
         if (Array.isArray(rc.data.asrama)) C.asrama = rc.data.asrama;
         if ('lokasi_pondok' in rc.data) { C.lokasiPondok = rc.data.lokasi_pondok; addPondok(); }
       }
-      const r = await fetch(API, { headers: { Accept: 'application/json' } });
+      const r = await fetch(API, { headers: { Accept: 'application/json' }, cache: 'no-store' });
       if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
       const j = await r.json();
-      S.all = (j.data || []).map(normalize); S.demo = false;
+      const next = (j.data || []).map(normalize);
+      const sig = (arr) => arr.map((a) => a.id + ':' + a.lat + ':' + a.lng + ':' + a.nama + ':' + a.unit + ':' + a.tahun_lulus).join('|');
+      const changed = !S.loaded || sig(next) !== sig(S.all);
+      S.all = next; S.demo = false; S.loaded = true; S.loadError = null;
+      if (!changed) return;
     } catch (e) {
       console.warn('API gagal:', e);
-      toast('Gagal memuat data dari server. Menampilkan data contoh.');
-      return useDemo();
+      if (silent) return;
+      S.loadError = String(e.message || e);
+      toast('Gagal memuat data alumni: ' + S.loadError);
     }
+    if (silent && S.view === 'detail' && !S.all.some((a) => a.id === S.selected)) { applyFilters(); setView('explore'); return; }
+    if (silent && S.view === 'form') { renderMarkers(); renderChips(); return; }
     applyFilters();
   }
+  // Data diperbarui otomatis: tiap 45 detik dan saat tab kembali dibuka
+  setInterval(() => { if (!document.hidden && !DEMO) load(true); }, 45000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && !DEMO && S.loaded) load(true); });
   function normalize(a) { return { ...a, id: +a.id, lat: +a.lat, lng: +a.lng, tahun_lulus: +a.tahun_lulus, tahun_masuk: a.tahun_masuk ? +a.tahun_masuk : null }; }
   function useDemo() {
     S.demo = true;
@@ -316,6 +326,7 @@
     const prov = new Set(S.filtered.map((a) => a.provinsi).filter(Boolean));
     const head = S.all.length
       ? `<h2>${vis.length} alumni di area ini ${demoBadge()}</h2><p>${S.filtered.length} alumni${filterActive() || S.q ? ' sesuai filter' : ''} · ${prov.size} wilayah</p>`
+      : S.loadError ? `<h2>Data belum bisa dimuat</h2><p>${esc(S.loadError)}. Muat ulang halaman untuk mencoba lagi.</p>`
       : `<h2>Belum ada alumni di peta ${demoBadge()}</h2><p>Jadilah yang pertama menandai lokasi Anda.</p>`;
     const units = counts('unit');
     return `<div class="sec-head">${head}</div>

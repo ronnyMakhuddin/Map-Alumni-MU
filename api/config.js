@@ -6,7 +6,7 @@ export default async function handler(req, res) {
   try {
     await ensureSchema();
     const s = await getSettings();
-    return send(res, 200, { data: s }, { 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=60' });
+    return send(res, 200, { data: s }, { 'Cache-Control': 'no-store' });
   } catch (e) {
     console.error(e);
     return send(res, 500, { error: 'Terjadi kesalahan server.' });
