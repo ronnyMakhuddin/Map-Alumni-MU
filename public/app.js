@@ -33,6 +33,14 @@
     group: '<svg viewBox="0 0 24 24"><path d="M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>'
   };
 
+  const NEGARA = ['Indonesia', 'Arab Saudi', 'Mesir', 'Malaysia', 'Singapura', 'Brunei Darussalam', 'Yaman', 'Sudan', 'Maroko', 'Turki',
+    'Yordania', 'Qatar', 'Uni Emirat Arab', 'Kuwait', 'Oman', 'Pakistan', 'India', 'Iran', 'Irak', 'Tiongkok', 'Taiwan', 'Hong Kong', 'Jepang',
+    'Korea Selatan', 'Thailand', 'Filipina', 'Australia', 'Selandia Baru', 'Jerman', 'Belanda', 'Inggris', 'Prancis', 'Rusia',
+    'Amerika Serikat', 'Kanada'];
+  const isLN = (a) => !!a.negara && a.negara !== 'Indonesia';
+  // Wilayah = provinsi (Indonesia) atau nama negara (luar negeri)
+  const wilayahOf = (a) => (isLN(a) ? a.negara : a.provinsi || '—');
+  const placeOf = (a) => [a.kota, a.provinsi, isLN(a) ? a.negara : null].filter(Boolean).join(', ');
   const unitColor = (u) => (C.unit.find((x) => x.nama === u) || {}).warna || '#5F6368';
   const initials = (n) => String(n || '?').replace(/[^\p{L}\s]/gu, '').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?';
   const fmtKm = (m) => (m < 1000 ? Math.round(m) + ' m' : (m < 10000 ? (m / 1000).toFixed(1) : Math.round(m / 1000)) + ' km');
@@ -139,7 +147,7 @@
       ['Jakarta Selatan','DKI Jakarta',-6.2615,106.8106],['Tangerang','Banten',-6.1783,106.6319],['Denpasar','Bali',-8.6705,115.2126],['Mataram','Nusa Tenggara Barat',-8.5833,116.1167],
       ['Makassar','Sulawesi Selatan',-5.1477,119.4327],['Balikpapan','Kalimantan Timur',-1.2379,116.8529],['Banjarmasin','Kalimantan Selatan',-3.3194,114.5908],['Pontianak','Kalimantan Barat',-0.0263,109.3425],
       ['Medan','Sumatera Utara',3.5952,98.6722],['Palembang','Sumatera Selatan',-2.9761,104.7754],['Pekanbaru','Riau',0.5071,101.4478],['Bandar Lampung','Lampung',-5.3971,105.2668],
-      ['Manado','Sulawesi Utara',1.4748,124.8421],['Jayapura','Papua',-2.5337,140.7181],['Kairo','Luar Negeri',30.0444,31.2357],['Madinah','Luar Negeri',24.4672,39.6024],['Kuala Lumpur','Luar Negeri',3.139,101.6869]];
+      ['Manado','Sulawesi Utara',1.4748,124.8421],['Jayapura','Papua',-2.5337,140.7181],['Kairo','Mesir',30.0444,31.2357,'Mesir'],['Madinah','Madinah',24.4672,39.6024,'Arab Saudi'],['Kuala Lumpur','Wilayah Persekutuan',3.139,101.6869,'Malaysia']];
     const dep = ['Ahmad','Muhammad','Abdul','Siti','Nur','Fatimah','Ali','Hasan','Zainal','Aisyah','Rizki','Ummu','Fahmi','Lailatul','Imam','Khoirul','Dewi','Ilham','Miftahul','Rohmah'];
     const bel = ['Fauzi','Hidayat','Rahman','Aminah','Hasanah','Maulana','Syafi\'i','Mubarok','Azizah','Khasanah','Hakim','Ridwan','Zahro','Anwar','Nikmah','Huda','Faruq','Jannah'];
     const kerja = ['Guru','Pengasuh pesantren','Dosen','Wiraswasta','Mahasiswa','Dokter','ASN','Penghulu','Petani','Pedagang','Imam masjid','Programmer','Perawat','Notaris'];
@@ -150,7 +158,7 @@
       const k = rnd() < .55 ? pick(kota.slice(0, 10)) : pick(kota);
       const lulus = 1990 + Math.floor(rnd() * 36);
       return { id: i + 1, nama: `${pick(dep)} ${pick(bel)}`, tahun_masuk: lulus - 3, tahun_lulus: lulus, unit: pick(units), asrama: pick(C.asrama),
-        provinsi: k[1], kota: k[0], pekerjaan: pick(kerja), instansi: null, whatsapp: null,
+        negara: k[4] || 'Indonesia', provinsi: k[1], kota: k[0], pekerjaan: pick(kerja), instansi: null, whatsapp: null,
         lat: k[2] + (rnd() - .5) * .18, lng: k[3] + (rnd() - .5) * .18, lokasi_samar: true, created_at: new Date().toISOString() };
     });
     applyFilters();
@@ -161,9 +169,9 @@
     const f = S.filters; const q = S.q.trim().toLowerCase();
     S.filtered = S.all.filter((a) =>
       (!f.tahunDari || a.tahun_lulus >= f.tahunDari) && (!f.tahunSampai || a.tahun_lulus <= f.tahunSampai) &&
-      (!f.provinsi.size || f.provinsi.has(a.provinsi || '—')) && (!f.unit.size || f.unit.has(a.unit)) &&
+      (!f.provinsi.size || f.provinsi.has(wilayahOf(a))) && (!f.unit.size || f.unit.has(a.unit)) &&
       (!f.asrama.size || f.asrama.has(a.asrama || '—')) &&
-      (!q || [a.nama, a.kota, a.provinsi, a.pekerjaan, a.instansi, a.asrama, a.unit, String(a.tahun_lulus)].some((v) => v && String(v).toLowerCase().includes(q))));
+      (!q || [a.nama, a.kota, a.provinsi, a.negara, a.pekerjaan, a.instansi, a.asrama, a.unit, String(a.tahun_lulus)].some((v) => v && String(v).toLowerCase().includes(q))));
     S.listLimit = 60;
     renderMarkers(); renderChips(); renderView();
   }
@@ -179,13 +187,14 @@
     set('asrama', f.asrama.size > 0, chipLabel(f.asrama, 'Asrama'));
     $('#chipReset').classList.toggle('hidden', !filterActive());
   }
+  function countsBy(fn) { const m = new Map(); for (const a of S.all) { const v = fn(a); m.set(v, (m.get(v) || 0) + 1); } return m; }
   function counts(key) {
     const m = new Map(); for (const a of S.all) { const v = a[key] || '—'; m.set(v, (m.get(v) || 0) + 1); } return m;
   }
 
   function openFilter(kind) {
     const f = S.filters; const dlg = $('#dialog');
-    const titles = { tahun: 'Tahun lulus', provinsi: 'Wilayah (provinsi)', unit: 'Unit pendidikan', asrama: 'Asrama' };
+    const titles = { tahun: 'Tahun lulus', provinsi: 'Wilayah (provinsi / negara)', unit: 'Unit pendidikan', asrama: 'Asrama' };
     let body = '';
     if (kind === 'tahun') {
       const years = [...new Set(S.all.map((a) => a.tahun_lulus))].sort((a, b) => b - a);
@@ -197,13 +206,20 @@
         <p class="fgroup" style="margin:4px 12px 6px">Angkatan yang terdaftar</p>
         ${years.map((y) => `<div class="opt" data-year="${y}"><span class="dot" style="background:var(--g-green)"></span>Lulus ${y}<span class="cnt">${cnt.get(y)}</span></div>`).join('') || '<p class="empty">Belum ada data.</p>'}`;
     } else {
-      const cnt = counts(kind);
+      const cnt = kind === 'provinsi' ? countsBy(wilayahOf) : counts(kind);
       let opts = kind === 'unit' ? C.unit.map((u) => u.nama) : kind === 'provinsi' ? C.provinsi.slice() : C.asrama.slice();
       for (const k of cnt.keys()) if (!opts.includes(k)) opts.push(k);
       opts = opts.filter((o) => cnt.has(o) || f[kind].has(o));
       opts.sort((a, b) => (cnt.get(b) || 0) - (cnt.get(a) || 0) || a.localeCompare(b));
-      body = opts.map((o) => `<label class="opt" data-name="${esc(o.toLowerCase())}"><input type="checkbox" value="${esc(o)}" ${f[kind].has(o) ? 'checked' : ''}/>
-        ${kind === 'unit' ? `<span class="dot" style="background:${unitColor(o)}"></span>` : ''}<span>${esc(o)}</span><span class="cnt">${cnt.get(o) || 0}</span></label>`).join('')
+      const optHTML = (o) => `<label class="opt" data-name="${esc(o.toLowerCase())}"><input type="checkbox" value="${esc(o)}" ${f[kind].has(o) ? 'checked' : ''}/>
+        ${kind === 'unit' ? `<span class="dot" style="background:${unitColor(o)}"></span>` : ''}<span>${esc(o)}</span><span class="cnt">${cnt.get(o) || 0}</span></label>`;
+      if (kind === 'provinsi') {
+        const negaraLN = new Set(S.all.filter(isLN).map((a) => a.negara));
+        const dalam = opts.filter((o) => !negaraLN.has(o)), luar = opts.filter((o) => negaraLN.has(o));
+        body = (dalam.length ? `<p class="fgroup opt-head" style="margin:6px 12px 4px">Indonesia</p>${dalam.map(optHTML).join('')}` : '') +
+          (luar.length ? `<p class="fgroup opt-head" style="margin:14px 12px 4px">Luar negeri</p>${luar.map(optHTML).join('')}` : '');
+      } else body = opts.map(optHTML).join('');
+      body = body
         || '<p class="empty">Belum ada data.</p>';
     }
     dlg.innerHTML = `<div class="dlg-head"><h3>${titles[kind]}</h3><button class="icon-btn" data-x>${ICON.close}</button></div>
@@ -317,13 +333,13 @@
       <span class="av" style="background:${col}">${esc(initials(a.nama))}</span>
       <span class="row-main"><b>${esc(a.nama)}</b>
         <span class="meta"><span>Lulus ${a.tahun_lulus}</span><span>${esc(a.unit)}</span>${a.asrama ? `<span>${esc(a.asrama)}</span>` : ''}</span>
-        <span class="meta" style="display:block">${esc([a.kota, a.provinsi].filter(Boolean).join(', ') || fmtCoord(a.lat, a.lng))}</span>
+        <span class="meta" style="display:block">${esc(placeOf(a) || fmtCoord(a.lat, a.lng))}</span>
         ${a.pekerjaan ? `<span class="tag" style="background:${col}1A;color:${col}">${esc(a.pekerjaan)}</span>` : ''}
       </span>${d != null && S.me ? `<span class="row-dist">${fmtKm(d)}</span>` : ''}</button></li>`;
   }
   function viewExplore() {
     const vis = sortByDistance(inBounds());
-    const prov = new Set(S.filtered.map((a) => a.provinsi).filter(Boolean));
+    const prov = new Set(S.filtered.map(wilayahOf).filter((w) => w !== '—'));
     const head = S.all.length
       ? `<h2>${vis.length} alumni di area ini ${demoBadge()}</h2><p>${S.filtered.length} alumni${filterActive() || S.q ? ' sesuai filter' : ''} · ${prov.size} wilayah</p>`
       : S.loadError ? `<h2>Data belum bisa dimuat</h2><p>${esc(S.loadError)}. Muat ulang halaman untuk mencoba lagi.</p>`
@@ -345,8 +361,8 @@
       ${arr.length ? `<ul class="list">${arr.slice(0, S.listLimit).map((a) => rowHTML(a)).join('')}</ul>${arr.length > S.listLimit ? '<button class="more" data-more>Tampilkan lebih banyak</button>' : ''}`
         : `<div class="empty">${ICON.group}<p>Belum ada alumni yang cocok.</p><button class="btn-tonal" data-go="form">Tambah lokasi saya</button></div>`}`;
   }
-  function bars(key, title, color, limit = 10, labelFn = (k) => k) {
-    const m = new Map(); for (const a of S.filtered) { const v = a[key] || '—'; m.set(v, (m.get(v) || 0) + 1); }
+  function bars(key, title, color, limit = 10, labelFn = (k) => k, valFn) {
+    const m = new Map(); for (const a of S.filtered) { const v = valFn ? valFn(a) : a[key] || '—'; m.set(v, (m.get(v) || 0) + 1); }
     const arr = [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit); const max = arr[0] ? arr[0][1] : 1;
     return `<div class="stat-block"><h3>${title}</h3>${arr.map(([k, n]) => `<button class="bar" data-f="${key}" data-v="${esc(k)}"><span class="lbl">${esc(labelFn(k))}</span>
       <span class="trk"><span class="fil" style="width:${(n / max) * 100}%;background:${typeof color === 'function' ? color(k) : color}"></span></span><span class="num">${n}</span></button>`).join('') || '<p class="empty">Belum ada data.</p>'}</div>`;
@@ -355,7 +371,7 @@
     const dec = S.filtered.reduce((m, a) => { const d = Math.floor(a.tahun_lulus / 10) * 10; m[d] = (m[d] || 0) + 1; return m; }, {});
     const decArr = Object.entries(dec).sort((a, b) => a[0] - b[0]); const max = Math.max(1, ...decArr.map((x) => x[1]));
     return `<div class="sec-head"><h2>Statistik alumni ${demoBadge()}</h2><p>${S.filtered.length} alumni${filterActive() ? ' sesuai filter' : ''}. Ketuk baris untuk memfilter.</p></div>
-      ${bars('provinsi', 'Sebaran wilayah', '#1A73E8', 12)}
+      ${bars('provinsi', 'Sebaran wilayah', (k) => (S.all.some((a) => isLN(a) && a.negara === k) ? '#E8710A' : '#1A73E8'), 12, (k) => k, wilayahOf)}
       ${bars('unit', 'Unit pendidikan', unitColor, 12)}
       ${bars('asrama', 'Asrama', '#9334E6', 12)}
       <div class="stat-block"><h3>Lulusan per dekade</h3>${decArr.map(([d, n]) => `<div class="bar"><span class="lbl">${d}-an</span><span class="trk"><span class="fil" style="width:${(n / max) * 100}%;background:#0B8043"></span></span><span class="num">${n}</span></div>`).join('') || '<p class="empty">Belum ada data.</p>'}</div>`;
@@ -376,7 +392,7 @@
         ${mine ? `<button class="act" data-go="form"><span>${ICON.edit}</span>Ubah</button>` : ''}
       </div>
       <ul class="info">
-        <li>${ICON.map}<div>${esc([a.kota, a.provinsi].filter(Boolean).join(', ') || 'Lokasi tidak disebutkan')}<small>${a.lokasi_samar ? 'Lokasi perkiraan (±1 km)' : 'Lokasi tepat'}</small></div></li>
+        <li>${ICON.map}<div>${esc(placeOf(a) || 'Lokasi tidak disebutkan')}<small>${a.lokasi_samar ? 'Lokasi perkiraan (±1 km)' : 'Lokasi tepat'}</small></div></li>
         <li>${ICON.cap}<div>${esc(a.unit)}<small>${a.tahun_masuk ? `Angkatan ${a.tahun_masuk} – ${a.tahun_lulus}` : `Lulus tahun ${a.tahun_lulus}`}</small></div></li>
         ${a.asrama ? `<li>${ICON.home}<div>${esc(a.asrama)}<small>Asrama</small></div></li>` : ''}
         ${a.pekerjaan || a.instansi ? `<li>${ICON.work}<div>${esc(a.pekerjaan || '')}${a.instansi ? `<small>${esc(a.instansi)}</small>` : ''}</div></li>` : ''}
@@ -463,10 +479,12 @@
         </div>
         <div class="two">
           <div class="field"><label>Kota / kabupaten</label><input name="kota" maxlength="120" value="${esc(a.kota || '')}" /></div>
-          <div class="field"><label>Provinsi</label><input name="provinsi" list="dlProv" maxlength="80" value="${esc(a.provinsi || '')}" /></div>
+          <div class="field"><label id="lblProv">${isLN(a) ? 'Negara bagian / wilayah' : 'Provinsi'}</label><input name="provinsi" list="${isLN(a) ? '' : 'dlProv'}" maxlength="80" value="${esc(a.provinsi || '')}" /></div>
         </div>
         <datalist id="dlProv">${C.provinsi.map((x) => `<option value="${esc(x)}">`).join('')}</datalist>
-        <small style="color:var(--g-muted)" id="locHint">Kota & provinsi terisi otomatis setelah lokasi ditentukan.</small>
+        <div class="field"><label>Negara</label><input name="negara" list="dlNeg" maxlength="60" value="${esc(a.negara || 'Indonesia')}" /></div>
+        <datalist id="dlNeg">${NEGARA.map((x) => `<option value="${esc(x)}">`).join('')}</datalist>
+        <small style="color:var(--g-muted)" id="locHint">Kota, provinsi & negara terisi otomatis setelah lokasi ditentukan.</small>
       </div>
       <label class="check"><input type="checkbox" name="lokasi_samar" ${a.lokasi_samar === true ? 'checked' : ''} />
         <span>Samarkan lokasi (±1 km)<small>Opsional. Titik di peta dibulatkan sehingga alamat rumah tidak terlihat persis.</small></span></label>
@@ -499,12 +517,23 @@
       const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=10&accept-language=id`);
       const j = await r.json(); const ad = j.address || {}; const f = $('#alumniForm'); if (!f) return;
       const kota = ad.city || ad.regency || ad.county || ad.town || ad.municipality || ad.village || '';
-      let prov = ad.state || ad.province || ad.region || '';
-      if (ad.country_code && ad.country_code !== 'id') prov = 'Luar Negeri';
-      if (kota) f.kota.value = ad.country_code && ad.country_code !== 'id' ? `${kota}, ${ad.country || ''}`.replace(/, $/, '') : kota;
-      if (prov) f.provinsi.value = matchProv(prov);
-      if (hint) hint.textContent = kota || prov ? `Terdeteksi: ${[kota, prov].filter(Boolean).join(', ')}. Ubah jika kurang tepat.` : 'Nama daerah tidak ditemukan, silakan isi manual.';
+      const prov = ad.state || ad.province || ad.region || '';
+      S.locNoLand = !ad.country_code;
+      if (!ad.country_code) { if (hint) hint.textContent = '⚠ Titik ini tidak berada di daratan (kemungkinan di laut). Periksa kembali lokasi rumah Anda.'; return; }
+      const ln = ad.country_code !== 'id';
+      f.negara.value = ln ? (ad.country || '') : 'Indonesia'; syncNegara();
+      f.kota.value = kota;
+      f.provinsi.value = ln ? prov : (prov ? matchProv(prov) : '');
+      const shown = [kota, prov, ln ? ad.country : null].filter(Boolean).join(', ');
+      if (hint) hint.textContent = shown ? `Terdeteksi: ${shown}. Ubah jika kurang tepat.` : 'Nama daerah tidak ditemukan, silakan isi manual.';
     } catch (e) { if (hint) hint.textContent = 'Nama daerah tidak bisa dideteksi, silakan isi manual.'; }
+  }
+  function syncNegara() {
+    const f = $('#alumniForm'); if (!f) return;
+    const ln = f.negara.value.trim() && !/^indonesia$/i.test(f.negara.value.trim());
+    $('#lblProv').textContent = ln ? 'Negara bagian / wilayah' : 'Provinsi';
+    f.provinsi.setAttribute('list', ln ? '' : 'dlProv');
+    if (ln && C.provinsi.includes(f.provinsi.value)) f.provinsi.value = '';
   }
   function matchProv(p) {
     const n = p.toLowerCase().replace(/^(provinsi|daerah khusus ibukota|daerah khusus)\s+/, '');
@@ -521,6 +550,8 @@
   }
   function bindForm() {
     const f = $('#alumniForm'); const msg = $('#formMsg');
+    S.locNoLand = false;
+    f.negara.addEventListener('input', syncNegara); f.negara.addEventListener('change', syncNegara);
     showFormMarker();
     if (formMarker) map.flyTo(formMarker.getLatLng(), 13, { duration: .6 });
     f.lat.addEventListener('change', showFormMarker); f.lng.addEventListener('change', showFormMarker);
@@ -558,6 +589,10 @@
       if (!d.unit) return (msg.textContent = 'Unit pendidikan wajib dipilih.');
       if (!isFinite(lat) || lat < -90 || lat > 90 || !isFinite(lng) || lng < -180 || lng > 180) return (msg.textContent = 'Lokasi belum valid. Gunakan Deteksi GPS, Pilih di peta, atau isi latitude/longitude.');
       if (!f.setuju.checked) return (msg.textContent = 'Centang persetujuan tampil publik terlebih dahulu.');
+      const neg = (d.negara || '').trim() || 'Indonesia'; d.negara = neg;
+      const diIndonesia = lat > -11.5 && lat < 6.5 && lng > 94 && lng < 141.5;
+      if (/^indonesia$/i.test(neg) && !diIndonesia && !confirm('Titik lokasi berada di luar Indonesia, padahal negara diisi "Indonesia". Tetap simpan?')) return;
+      if (S.locNoLand && !confirm('Titik lokasi tampaknya berada di laut. Tetap simpan?')) return;
       d.lat = lat; d.lng = lng; delete d.setuju;
       const btn = $('#btnSubmit'); btn.disabled = true; btn.textContent = 'Menyimpan…';
       try {
@@ -640,7 +675,7 @@
     if (!v) { sug.classList.add('hidden'); return; }
     const hits = S.filtered.slice(0, 6);
     sug.innerHTML = hits.map((a) => `<button class="sg-item" data-id="${a.id}"><span class="sg-ico" style="background:${unitColor(a.unit)};color:#fff">${ICON.person}</span>
-        <span><b>${esc(a.nama)}</b><small>${esc(a.unit)} · Lulus ${a.tahun_lulus} · ${esc(a.kota || a.provinsi || '')}</small></span></button>`).join('') +
+        <span><b>${esc(a.nama)}</b><small>${esc(a.unit)} · Lulus ${a.tahun_lulus} · ${esc(a.kota || (isLN(a) ? a.negara : a.provinsi) || '')}</small></span></button>`).join('') +
       `<button class="sg-item" data-place><span class="sg-ico">${ICON.search}</span><span><b>Cari tempat "${esc(v)}"</b><small>Pindahkan peta ke lokasi ini</small></span></button>` +
       (S.filtered.length ? `<button class="sg-item" data-all><span class="sg-ico">${ICON.group}</span><span><b>Lihat semua ${S.filtered.length} hasil</b><small>Daftar alumni sesuai pencarian</small></span></button>` : '');
     sug.classList.remove('hidden');

@@ -9,6 +9,7 @@ create table if not exists peta_alumni.alumni (
   tahun_lulus int not null check (tahun_lulus between 1900 and 2100),
   unit text not null check (char_length(unit) <= 60),
   asrama text check (char_length(asrama) <= 80),
+  negara text not null default 'Indonesia' check (char_length(negara) <= 60),
   provinsi text check (char_length(provinsi) <= 80),
   kota text check (char_length(kota) <= 120),
   pekerjaan text check (char_length(pekerjaan) <= 120),

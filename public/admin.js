@@ -16,7 +16,8 @@
     download: '<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7zM5 18v2h14v-2z"/></svg>',
     eye: '<svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>'
   };
-  const COLS = ['nama', 'tahun_masuk', 'tahun_lulus', 'unit', 'asrama', 'provinsi', 'kota', 'pekerjaan', 'instansi', 'whatsapp', 'lat', 'lng', 'lokasi_samar'];
+  const NEGARA = ['Indonesia', 'Arab Saudi', 'Mesir', 'Malaysia', 'Singapura', 'Brunei Darussalam', 'Yaman', 'Sudan', 'Maroko', 'Turki', 'Jerman', 'Belanda', 'Inggris', 'Amerika Serikat', 'Jepang', 'Korea Selatan', 'Taiwan', 'Hong Kong', 'Australia', 'Qatar', 'Uni Emirat Arab', 'Pakistan', 'India', 'Tiongkok'];
+  const COLS = ['nama', 'tahun_masuk', 'tahun_lulus', 'unit', 'asrama', 'negara', 'provinsi', 'kota', 'pekerjaan', 'instansi', 'whatsapp', 'lat', 'lng', 'lokasi_samar'];
 
   const S = {
     key: null, tab: 'data', rows: [], settings: null,
@@ -85,14 +86,14 @@
     let a = S.rows.filter((r) =>
       (S.status === 'semua' || (S.status === 'tampil' ? r.approved : !r.approved)) &&
       (!S.unit || r.unit === S.unit) &&
-      (!q || [r.nama, r.kota, r.provinsi, r.asrama, r.pekerjaan, r.instansi, r.whatsapp, String(r.tahun_lulus)].some((v) => v && String(v).toLowerCase().includes(q))));
+      (!q || [r.nama, r.kota, r.provinsi, r.negara, r.asrama, r.pekerjaan, r.instansi, r.whatsapp, String(r.tahun_lulus)].some((v) => v && String(v).toLowerCase().includes(q))));
     const { k, dir } = S.sort;
     a.sort((x, y) => { const p = x[k] ?? '', q2 = y[k] ?? ''; return (typeof p === 'number' && typeof q2 === 'number' ? p - q2 : String(p).localeCompare(String(q2))) * dir; });
     return a;
   }
   function renderData() {
     const total = S.rows.length, pend = S.rows.filter((r) => !r.approved).length;
-    const prov = new Set(S.rows.map((r) => r.provinsi).filter(Boolean)).size;
+    const prov = new Set(S.rows.map((r) => (r.negara && r.negara !== 'Indonesia' ? r.negara : r.provinsi)).filter(Boolean)).size;
     const units = [...new Set(S.settings.unit.map((u) => u.nama).concat(S.rows.map((r) => r.unit)))];
     $('#content').innerHTML = `
       <h2 class="title">Data alumni</h2><p class="sub">Tambah, ubah, setujui, atau hapus data alumni. Impor massal dari CSV/Excel.</p>
@@ -146,7 +147,7 @@
         <td>${r.tahun_masuk ? r.tahun_masuk + '–' : ''}${r.tahun_lulus}</td>
         <td><span class="dot" style="background:${unitColor(r.unit)}"></span>${esc(r.unit)}</td>
         <td>${esc(r.asrama || '—')}</td>
-        <td>${esc([r.kota, r.provinsi].filter(Boolean).join(', ') || '—')}</td>
+        <td>${esc([r.kota, r.provinsi, r.negara && r.negara !== 'Indonesia' ? r.negara : null].filter(Boolean).join(', ') || '—')}</td>
         <td>${r.approved ? '<span class="chip ok">Tampil</span>' : '<span class="chip wait">Menunggu</span>'}</td>
         <td>${r.created_at ? new Date(r.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</td>
         <td><div class="row-acts">
@@ -225,11 +226,13 @@
           <div class="field"><label>Pekerjaan / aktivitas</label><input name="pekerjaan" maxlength="120" value="${esc(a.pekerjaan || '')}" /></div>
           <div class="field"><label>Instansi / lembaga</label><input name="instansi" maxlength="160" value="${esc(a.instansi || '')}" /></div>
           <div class="field"><label>Kota / kabupaten</label><input name="kota" maxlength="120" value="${esc(a.kota || '')}" /></div>
-          <div class="field"><label>Provinsi</label><input name="provinsi" list="dlP" maxlength="80" value="${esc(a.provinsi || '')}" /></div>
+          <div class="field"><label>Negara</label><input name="negara" list="dlN" maxlength="60" value="${esc(a.negara || 'Indonesia')}" /></div>
+          <div class="field"><label>Provinsi / negara bagian</label><input name="provinsi" list="dlP" maxlength="80" value="${esc(a.provinsi || '')}" /></div>
           <div class="field"><label>Latitude *</label><input name="lat" inputmode="decimal" value="${a.lat ?? ''}" /></div>
           <div class="field"><label>Longitude *</label><input name="lng" inputmode="decimal" value="${a.lng ?? ''}" /></div>
         </div>
         <datalist id="dlA">${S.settings.asrama.map((x) => `<option value="${esc(x)}">`).join('')}</datalist>
+        <datalist id="dlN">${NEGARA.map((x) => `<option value="${esc(x)}">`).join('')}</datalist>
         <datalist id="dlP">${DEF.provinsi.map((x) => `<option value="${esc(x)}">`).join('')}</datalist>
         <div class="minimap" id="mm"></div><p class="hint">Klik peta untuk menentukan lokasi.</p>
         <label class="check"><input type="checkbox" name="lokasi_samar" ${a.lokasi_samar === true ? 'checked' : ''} /><span>Samarkan lokasi (±1 km)</span></label>
@@ -286,7 +289,7 @@
     const rows = parseCsv(await file.text());
     if (rows.length < 2) return toast('File CSV kosong.');
     const head = rows[0].map((h) => h.trim().toLowerCase().replace(/\s+/g, '_'));
-    const alias = { latitude: 'lat', longitude: 'lng', lon: 'lng', long: 'lng', no_wa: 'whatsapp', wa: 'whatsapp', unit_pendidikan: 'unit', tahun_keluar: 'tahun_lulus', kabupaten: 'kota', kota_kabupaten: 'kota' };
+    const alias = { latitude: 'lat', longitude: 'lng', lon: 'lng', long: 'lng', no_wa: 'whatsapp', wa: 'whatsapp', unit_pendidikan: 'unit', country: 'negara', tahun_keluar: 'tahun_lulus', kabupaten: 'kota', kota_kabupaten: 'kota' };
     const keys = head.map((h) => alias[h] || h);
     if (!keys.includes('nama') || !keys.includes('tahun_lulus') || !keys.includes('unit') || !keys.includes('lat') || !keys.includes('lng'))
       return importHelp('Kolom wajib tidak ditemukan. Pastikan baris pertama berisi judul kolom.');
@@ -319,7 +322,7 @@
   });
   function downloadTemplate() {
     download('template-impor-alumni.csv', COLS.join(',') + '\r\n' +
-      ['Ahmad Fauzi', 2010, 2013, 'MA', S.settings.asrama[0] || '', 'Jawa Timur', 'Surabaya', 'Guru', 'MI Nurul Huda', '081234567890', -7.2575, 112.7521, 'ya'].map(csvCell).join(','));
+      ['Ahmad Fauzi', 2010, 2013, 'MA', S.settings.asrama[0] || '', 'Indonesia', 'Jawa Timur', 'Surabaya', 'Guru', 'MI Nurul Huda', '081234567890', -7.2575, 112.7521, 'ya'].map(csvCell).join(','));
   }
   function importHelp(msg) {
     openModal(`<div class="m-head"><h3>Format CSV</h3><button class="icon-btn" data-x>${I.close}</button></div>

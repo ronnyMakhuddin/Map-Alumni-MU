@@ -34,6 +34,6 @@ window.APP_CONFIG = {
     "Kalimantan Barat","Kalimantan Tengah","Kalimantan Selatan","Kalimantan Timur","Kalimantan Utara",
     "Sulawesi Utara","Gorontalo","Sulawesi Tengah","Sulawesi Barat","Sulawesi Selatan","Sulawesi Tenggara",
     "Maluku","Maluku Utara","Papua","Papua Barat","Papua Barat Daya","Papua Tengah","Papua Pegunungan",
-    "Papua Selatan","Luar Negeri"
+    "Papua Selatan"
   ]
 };

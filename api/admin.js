@@ -43,8 +43,8 @@ export default async function handler(req, res) {
           const chunk = ok.slice(i, i + 200);
           const out = await sql.transaction(chunk.map((d) => sql`
             insert into peta_alumni.alumni
-              (nama, tahun_masuk, tahun_lulus, unit, asrama, provinsi, kota, pekerjaan, instansi, whatsapp, lat, lng, lokasi_samar, approved)
-            values (${d.nama}, ${d.tahun_masuk}, ${d.tahun_lulus}, ${d.unit}, ${d.asrama}, ${d.provinsi}, ${d.kota},
+              (nama, tahun_masuk, tahun_lulus, unit, asrama, negara, provinsi, kota, pekerjaan, instansi, whatsapp, lat, lng, lokasi_samar, approved)
+            values (${d.nama}, ${d.tahun_masuk}, ${d.tahun_lulus}, ${d.unit}, ${d.asrama}, ${d.negara}, ${d.provinsi}, ${d.kota},
               ${d.pekerjaan}, ${d.instansi}, ${d.whatsapp}, ${d.lat}, ${d.lng}, ${d.lokasi_samar}, ${d.approved})
             returning id`));
           out.forEach((rows) => ids.push(rows[0].id));
@@ -60,7 +60,7 @@ export default async function handler(req, res) {
         const rows = await sql`
           update peta_alumni.alumni set
             nama=${d.nama}, tahun_masuk=${d.tahun_masuk}, tahun_lulus=${d.tahun_lulus}, unit=${d.unit},
-            asrama=${d.asrama}, provinsi=${d.provinsi}, kota=${d.kota}, pekerjaan=${d.pekerjaan},
+            asrama=${d.asrama}, negara=${d.negara}, provinsi=${d.provinsi}, kota=${d.kota}, pekerjaan=${d.pekerjaan},
             instansi=${d.instansi}, whatsapp=${d.whatsapp}, lat=${d.lat}, lng=${d.lng},
             lokasi_samar=${d.lokasi_samar}, approved=${approved}, updated_at=now()
           where id=${id} returning id`;

@@ -14,7 +14,7 @@ const DB_URL = findDbUrl();
 // globalThis.__SQL__ hanya dipakai server lokal (scripts/dev-server.js) untuk database tiruan
 export const sql = globalThis.__SQL__ || (DB_URL ? neon(DB_URL) : null);
 
-export const PUBLIC_COLS = `id, created_at, nama, tahun_masuk, tahun_lulus, unit, asrama, provinsi, kota,
+export const PUBLIC_COLS = `id, created_at, nama, tahun_masuk, tahun_lulus, unit, asrama, negara, provinsi, kota,
   pekerjaan, instansi, whatsapp, lat, lng, lokasi_samar`;
 export const ADMIN_COLS = `${PUBLIC_COLS}, updated_at, approved`;
 
@@ -58,6 +58,7 @@ export async function ensureSchema() {
   await sql`create table if not exists peta_alumni.pengaturan (
     kunci text primary key, nilai jsonb not null, updated_at timestamptz not null default now()
   )`;
+  await sql`alter table peta_alumni.alumni add column if not exists negara text not null default 'Indonesia' check (char_length(negara) <= 60)`;
   schemaReady = true;
 }
 
@@ -66,6 +67,39 @@ export async function getSettings() {
   const s = { ...DEFAULT_SETTINGS };
   for (const r of rows) if (r.kunci in DEFAULT_SETTINGS) s[r.kunci] = r.nilai;
   return s;
+}
+
+export const PROVINSI = ['Aceh', 'Sumatera Utara', 'Sumatera Barat', 'Riau', 'Kepulauan Riau', 'Jambi', 'Sumatera Selatan',
+  'Kepulauan Bangka Belitung', 'Bengkulu', 'Lampung', 'DKI Jakarta', 'Banten', 'Jawa Barat', 'Jawa Tengah',
+  'Daerah Istimewa Yogyakarta', 'Jawa Timur', 'Bali', 'Nusa Tenggara Barat', 'Nusa Tenggara Timur',
+  'Kalimantan Barat', 'Kalimantan Tengah', 'Kalimantan Selatan', 'Kalimantan Timur', 'Kalimantan Utara',
+  'Sulawesi Utara', 'Gorontalo', 'Sulawesi Tengah', 'Sulawesi Barat', 'Sulawesi Selatan', 'Sulawesi Tenggara',
+  'Maluku', 'Maluku Utara', 'Papua', 'Papua Barat', 'Papua Barat Daya', 'Papua Tengah', 'Papua Pegunungan', 'Papua Selatan'];
+const PROV_ALIAS = { 'diy': 'Daerah Istimewa Yogyakarta', 'yogyakarta': 'Daerah Istimewa Yogyakarta', 'di yogyakarta': 'Daerah Istimewa Yogyakarta',
+  'jogja': 'Daerah Istimewa Yogyakarta', 'jakarta': 'DKI Jakarta', 'dki': 'DKI Jakarta', 'jatim': 'Jawa Timur', 'jateng': 'Jawa Tengah',
+  'jabar': 'Jawa Barat', 'ntb': 'Nusa Tenggara Barat', 'ntt': 'Nusa Tenggara Timur', 'babel': 'Kepulauan Bangka Belitung',
+  'bangka belitung': 'Kepulauan Bangka Belitung', 'kepri': 'Kepulauan Riau', 'sumut': 'Sumatera Utara', 'sumbar': 'Sumatera Barat',
+  'sumsel': 'Sumatera Selatan', 'kalbar': 'Kalimantan Barat', 'kalteng': 'Kalimantan Tengah', 'kalsel': 'Kalimantan Selatan',
+  'kaltim': 'Kalimantan Timur', 'kaltara': 'Kalimantan Utara', 'sulut': 'Sulawesi Utara', 'sulteng': 'Sulawesi Tengah',
+  'sulbar': 'Sulawesi Barat', 'sulsel': 'Sulawesi Selatan', 'sultra': 'Sulawesi Tenggara', 'malut': 'Maluku Utara',
+  'nanggroe aceh darussalam': 'Aceh' };
+// Huruf kapital semua → Huruf Awal Kapital
+export function tidy(s) {
+  if (!s) return s;
+  s = s.replace(/\s+/g, ' ').trim();
+  if (s === s.toUpperCase() || s === s.toLowerCase()) s = s.toLowerCase().replace(/(^|[\s\-(/])(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
+  return s;
+}
+export function canonProv(p) {
+  if (!p) return null;
+  const n = p.toLowerCase().replace(/[.,]/g, ' ').replace(/^\s*(prov|provinsi|propinsi|daerah khusus ibukota|daerah khusus)\s+/, '').replace(/\s+/g, ' ').trim();
+  return PROVINSI.find((x) => x.toLowerCase() === n) || PROV_ALIAS[n] || PROVINSI.find((x) => x.toLowerCase().replace(/^dki |^daerah istimewa /, '') === n) || tidy(p);
+}
+export function canonNegara(n) {
+  if (!n) return 'Indonesia';
+  const t = n.replace(/\s+/g, ' ').trim();
+  if (/^(indonesia|ri|republik indonesia|nkri)$/i.test(t)) return 'Indonesia';
+  return tidy(t).slice(0, 60);
 }
 
 export function str(v, max) {
@@ -88,6 +122,7 @@ export function validateAlumni(body) {
     tahun_lulus: int(b.tahun_lulus),
     unit: str(b.unit, 60),
     asrama: str(b.asrama, 80),
+    negara: str(b.negara, 60),
     provinsi: str(b.provinsi, 80),
     kota: str(b.kota, 120),
     pekerjaan: str(b.pekerjaan, 120),
@@ -101,6 +136,17 @@ export function validateAlumni(body) {
   if (!d.tahun_lulus || d.tahun_lulus < 1900 || d.tahun_lulus > year) return { error: 'Tahun lulus tidak valid.' };
   if (d.tahun_masuk && (d.tahun_masuk < 1900 || d.tahun_masuk > d.tahun_lulus)) return { error: 'Tahun masuk tidak valid.' };
   if (!d.unit) return { error: 'Unit pendidikan wajib dipilih.' };
+  // Wilayah: Indonesia memakai nama provinsi baku; luar negeri memakai nama negara
+  // data lama: provinsi "Luar Negeri" + kota "Kota, Negara"
+  if (!d.negara && d.provinsi && /^luar negeri$/i.test(d.provinsi) && d.kota && d.kota.includes(',')) {
+    const parts = d.kota.split(','); d.negara = parts.pop(); d.kota = parts.join(',').trim(); d.provinsi = null;
+  }
+  d.negara = canonNegara(d.negara);
+  if (d.negara === 'Indonesia') {
+    if (d.provinsi && /^luar negeri$/i.test(d.provinsi)) d.provinsi = null;
+    else d.provinsi = canonProv(d.provinsi);
+  } else d.provinsi = tidy(d.provinsi);
+  d.kota = tidy(d.kota);
   if (!Number.isFinite(d.lat) || d.lat < -90 || d.lat > 90 || String(b.lat ?? '') === '') return { error: 'Latitude harus antara -90 dan 90.' };
   if (!Number.isFinite(d.lng) || d.lng < -180 || d.lng > 180 || String(b.lng ?? '') === '') return { error: 'Longitude harus antara -180 dan 180.' };
   if (d.whatsapp) {
