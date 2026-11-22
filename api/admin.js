@@ -32,9 +32,10 @@ export default async function handler(req, res) {
         const body = await readBody(req);
         const list = Array.isArray(body) ? body : [body];
         if (list.length > 2000) return send(res, 400, { error: 'Maksimal 2000 baris per impor.' });
+        const { asrama } = await getSettings();
         const ok = [], gagal = [];
         list.forEach((b, i) => {
-          const v = validateAlumni({ ...b, website: undefined });
+          const v = validateAlumni({ ...b, website: undefined }, { asrama });
           if (v.error) gagal.push({ baris: i + 1, error: v.error }); else ok.push({ ...v.data, approved: b.approved !== false && b.approved !== 'false' });
         });
         if (!Array.isArray(body) && gagal.length) return send(res, 400, { error: gagal[0].error });
@@ -54,7 +55,8 @@ export default async function handler(req, res) {
       if (req.method === 'PUT') {
         if (!id) return send(res, 400, { error: 'Parameter id wajib.' });
         const body = await readBody(req);
-        const { data: d, error } = validateAlumni({ ...body, website: undefined });
+        const { asrama } = await getSettings();
+        const { data: d, error } = validateAlumni({ ...body, website: undefined }, { asrama });
         if (error) return send(res, 400, { error });
         const approved = body.approved !== false && body.approved !== 'false';
         const rows = await sql`

@@ -20,7 +20,7 @@ window.APP_CONFIG = {
     { nama: "Ma'had Aly",         warna: "#5F6368" }
   ],
 
-  // Daftar asrama (alumni tetap bisa mengetik nama asrama lain)
+  // Daftar asrama bawaan (dipakai sebagai pilihan; aslinya diatur dari admin)
   asrama: [
     "Asrama Al-Ghazali", "Asrama An-Nawawi", "Asrama Asy-Syafi'i",
     "Asrama Al-Hasan", "Asrama Al-Husain", "Asrama Fatimah Az-Zahra",

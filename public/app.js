@@ -459,8 +459,7 @@
         <div class="field"><label>Tahun lulus *</label><select name="tahun_lulus" required>${years(a.tahun_lulus)}</select></div>
       </div>
       <div class="field"><label>Unit pendidikan *</label><select name="unit" required><option value="">Pilih unit</option>${C.unit.map((u) => `<option ${a.unit === u.nama ? 'selected' : ''}>${esc(u.nama)}</option>`).join('')}</select></div>
-      <div class="field"><label>Asrama</label><input name="asrama" list="dlAsrama" maxlength="80" value="${esc(a.asrama || '')}" placeholder="Pilih atau ketik" /></div>
-      <datalist id="dlAsrama">${C.asrama.map((x) => `<option value="${esc(x)}">`).join('')}</datalist>
+      <div class="field"><label>Asrama</label><select name="asrama"><option value="">Pilih asrama (kosongkan bila tidak mondok)</option>${C.asrama.map((x) => `<option ${a.asrama === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></div>
       <div class="two">
         <div class="field"><label>Pekerjaan / aktivitas</label><input name="pekerjaan" maxlength="120" value="${esc(a.pekerjaan || '')}" /></div>
         <div class="field"><label>Instansi / lembaga</label><input name="instansi" maxlength="160" value="${esc(a.instansi || '')}" /></div>

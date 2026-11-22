@@ -102,6 +102,15 @@ export function canonNegara(n) {
   return tidy(t).slice(0, 60);
 }
 
+// Asrama: cocokkan ke daftar resmi (abaikan huruf besar, tanda baca, awalan "Asrama")
+const asramaKey = (v) => String(v).toLowerCase().replace(/^\s*asrama\s+/, '').replace(/[^a-z0-9]/g, '');
+export function canonAsrama(v, list = []) {
+  if (!v || /^[-–—.\s]*$/.test(v) || /^(tidak ada|tidak|none|non asrama)$/i.test(v.trim())) return { value: null, known: true };
+  const k = asramaKey(v);
+  const hit = list.find((x) => asramaKey(x) === k);
+  return hit ? { value: hit, known: true } : { value: tidy(v), known: false };
+}
+
 export function str(v, max) {
   if (v === undefined || v === null) return null;
   const s = String(v).replace(/[\u0000-\u001f]/g, ' ').trim();
@@ -112,7 +121,7 @@ export function int(v) {
   return Number.isFinite(n) ? n : null;
 }
 
-export function validateAlumni(body) {
+export function validateAlumni(body, opts = {}) {
   const b = body || {};
   if (b.website) return { error: 'Spam terdeteksi.' }; // honeypot
   const year = new Date().getFullYear() + 1;
@@ -136,6 +145,11 @@ export function validateAlumni(body) {
   if (!d.tahun_lulus || d.tahun_lulus < 1900 || d.tahun_lulus > year) return { error: 'Tahun lulus tidak valid.' };
   if (d.tahun_masuk && (d.tahun_masuk < 1900 || d.tahun_masuk > d.tahun_lulus)) return { error: 'Tahun masuk tidak valid.' };
   if (!d.unit) return { error: 'Unit pendidikan wajib dipilih.' };
+  if (opts.asrama) {
+    const a = canonAsrama(d.asrama, opts.asrama);
+    if (!a.known && opts.strictAsrama) return { error: 'Pilih asrama dari daftar yang tersedia.' };
+    d.asrama = a.value;
+  }
   // Wilayah: Indonesia memakai nama provinsi baku; luar negeri memakai nama negara
   // data lama: provinsi "Luar Negeri" + kota "Kota, Negara"
   if (!d.negara && d.provinsi && /^luar negeri$/i.test(d.provinsi) && d.kota && d.kota.includes(',')) {

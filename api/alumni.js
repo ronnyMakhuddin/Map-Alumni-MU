@@ -20,9 +20,9 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { data: d, error } = validateAlumni(await readBody(req));
+      const { perlu_persetujuan, asrama } = await getSettings();
+      const { data: d, error } = validateAlumni(await readBody(req), { asrama, strictAsrama: true });
       if (error) return send(res, 400, { error });
-      const { perlu_persetujuan } = await getSettings();
       const approved = !perlu_persetujuan;
       const [row] = await sql`
         insert into peta_alumni.alumni
@@ -39,7 +39,8 @@ export default async function handler(req, res) {
     if (!(typeof token === 'string' && UUID_RE.test(token))) return send(res, 401, { error: 'Token tidak valid.' });
 
     if (req.method === 'PUT') {
-      const { data: d, error } = validateAlumni(await readBody(req));
+      const { asrama } = await getSettings();
+      const { data: d, error } = validateAlumni(await readBody(req), { asrama, strictAsrama: true });
       if (error) return send(res, 400, { error });
       const rows = await sql`
         update peta_alumni.alumni set

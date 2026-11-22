@@ -221,7 +221,7 @@
           <div class="field"><label>Unit pendidikan *</label><select name="unit"><option value="">—</option>${units.map((u) => `<option ${a.unit === u ? 'selected' : ''}>${esc(u)}</option>`).join('')}</select></div>
         </div>
         <div class="grid2">
-          <div class="field"><label>Asrama</label><input name="asrama" list="dlA" maxlength="80" value="${esc(a.asrama || '')}" /></div>
+          <div class="field"><label>Asrama</label><select name="asrama"><option value="">— Tidak ada —</option>${[...S.settings.asrama, ...(a.asrama && !S.settings.asrama.includes(a.asrama) ? [a.asrama] : [])].map((x) => `<option ${a.asrama === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></div>
           <div class="field"><label>No. WhatsApp</label><input name="whatsapp" maxlength="20" value="${esc(a.whatsapp || '')}" /></div>
           <div class="field"><label>Pekerjaan / aktivitas</label><input name="pekerjaan" maxlength="120" value="${esc(a.pekerjaan || '')}" /></div>
           <div class="field"><label>Instansi / lembaga</label><input name="instansi" maxlength="160" value="${esc(a.instansi || '')}" /></div>
@@ -231,7 +231,6 @@
           <div class="field"><label>Latitude *</label><input name="lat" inputmode="decimal" value="${a.lat ?? ''}" /></div>
           <div class="field"><label>Longitude *</label><input name="lng" inputmode="decimal" value="${a.lng ?? ''}" /></div>
         </div>
-        <datalist id="dlA">${S.settings.asrama.map((x) => `<option value="${esc(x)}">`).join('')}</datalist>
         <datalist id="dlN">${NEGARA.map((x) => `<option value="${esc(x)}">`).join('')}</datalist>
         <datalist id="dlP">${DEF.provinsi.map((x) => `<option value="${esc(x)}">`).join('')}</datalist>
         <div class="minimap" id="mm"></div><p class="hint">Klik peta untuk menentukan lokasi.</p>
@@ -341,7 +340,7 @@
     const cnt = (n) => S.rows.filter((r) => r[kind] === n).length;
     const unlisted = [...new Set(S.rows.map((r) => r[kind]).filter((v) => v && !src.some((x) => x.nama === v)))];
     $('#content').innerHTML = `<h2 class="title">${isUnit ? 'Unit pendidikan' : 'Asrama'}</h2>
-      <p class="sub">${isUnit ? 'Daftar unit yang bisa dipilih alumni. Warna dipakai untuk pin di peta.' : 'Daftar asrama yang muncul sebagai pilihan (alumni tetap bisa mengetik nama lain).'} Mengganti nama otomatis memperbarui data alumni yang memakai nama lama.</p>
+      <p class="sub">${isUnit ? 'Daftar unit yang bisa dipilih alumni. Warna dipakai untuk pin di peta.' : 'Daftar asrama yang bisa dipilih alumni. Isian asrama di formulir hanya bisa memilih dari daftar ini.'} Mengganti nama otomatis memperbarui data alumni yang memakai nama lama.</p>
       <div class="panel editor"><div id="lst"></div>
         <div class="editor-foot"><button class="btn tonal" id="addItem">${I.add}Tambah ${isUnit ? 'unit' : 'asrama'}</button>
           <span class="dirty-note hidden" id="dirty">Belum disimpan</span>
