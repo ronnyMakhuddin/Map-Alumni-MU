@@ -32,10 +32,10 @@ export default async function handler(req, res) {
         const body = await readBody(req);
         const list = Array.isArray(body) ? body : [body];
         if (list.length > 2000) return send(res, 400, { error: 'Maksimal 2000 baris per impor.' });
-        const { asrama } = await getSettings();
+        const { asrama, unit } = await getSettings();
         const ok = [], gagal = [];
         list.forEach((b, i) => {
-          const v = validateAlumni({ ...b, website: undefined }, { asrama });
+          const v = validateAlumni({ ...b, website: undefined }, { asrama, unit });
           if (v.error) gagal.push({ baris: i + 1, error: v.error }); else ok.push({ ...v.data, approved: b.approved !== false && b.approved !== 'false' });
         });
         if (!Array.isArray(body) && gagal.length) return send(res, 400, { error: gagal[0].error });
@@ -44,8 +44,8 @@ export default async function handler(req, res) {
           const chunk = ok.slice(i, i + 200);
           const out = await sql.transaction(chunk.map((d) => sql`
             insert into peta_alumni.alumni
-              (nama, tahun_masuk, tahun_lulus, unit, asrama, negara, provinsi, kota, pekerjaan, instansi, whatsapp, lat, lng, lokasi_samar, approved)
-            values (${d.nama}, ${d.tahun_masuk}, ${d.tahun_lulus}, ${d.unit}, ${d.asrama}, ${d.negara}, ${d.provinsi}, ${d.kota},
+              (nama, tahun_masuk, tahun_lulus, unit, unit_nonformal, asrama, negara, provinsi, kota, pekerjaan, instansi, whatsapp, lat, lng, lokasi_samar, approved)
+            values (${d.nama}, ${d.tahun_masuk}, ${d.tahun_lulus}, ${d.unit}, ${d.unit_nonformal}, ${d.asrama}, ${d.negara}, ${d.provinsi}, ${d.kota},
               ${d.pekerjaan}, ${d.instansi}, ${d.whatsapp}, ${d.lat}, ${d.lng}, ${d.lokasi_samar}, ${d.approved})
             returning id`));
           out.forEach((rows) => ids.push(rows[0].id));
@@ -55,13 +55,13 @@ export default async function handler(req, res) {
       if (req.method === 'PUT') {
         if (!id) return send(res, 400, { error: 'Parameter id wajib.' });
         const body = await readBody(req);
-        const { asrama } = await getSettings();
-        const { data: d, error } = validateAlumni({ ...body, website: undefined }, { asrama });
+        const { asrama, unit } = await getSettings();
+        const { data: d, error } = validateAlumni({ ...body, website: undefined }, { asrama, unit });
         if (error) return send(res, 400, { error });
         const approved = body.approved !== false && body.approved !== 'false';
         const rows = await sql`
           update peta_alumni.alumni set
-            nama=${d.nama}, tahun_masuk=${d.tahun_masuk}, tahun_lulus=${d.tahun_lulus}, unit=${d.unit},
+            nama=${d.nama}, tahun_masuk=${d.tahun_masuk}, tahun_lulus=${d.tahun_lulus}, unit=${d.unit}, unit_nonformal=${d.unit_nonformal},
             asrama=${d.asrama}, negara=${d.negara}, provinsi=${d.provinsi}, kota=${d.kota}, pekerjaan=${d.pekerjaan},
             instansi=${d.instansi}, whatsapp=${d.whatsapp}, lat=${d.lat}, lng=${d.lng},
             lokasi_samar=${d.lokasi_samar}, approved=${approved}, updated_at=now()
@@ -93,7 +93,7 @@ export default async function handler(req, res) {
       const next = { ...cur };
       if (Array.isArray(b.unit)) {
         const seen = new Set();
-        next.unit = b.unit.map((u) => ({ nama: str(u && u.nama, 60), warna: HEX.test(u && u.warna) ? u.warna : '#5F6368' }))
+        next.unit = b.unit.map((u) => ({ nama: str(u && u.nama, 60), warna: HEX.test(u && u.warna) ? u.warna : '#5F6368', jenis: u && u.jenis === 'nonformal' ? 'nonformal' : 'formal' }))
           .filter((u) => u.nama && !seen.has(u.nama.toLowerCase()) && seen.add(u.nama.toLowerCase()));
         if (!next.unit.length) return send(res, 400, { error: 'Minimal harus ada satu unit.' });
       }
@@ -121,11 +121,20 @@ export default async function handler(req, res) {
           const l = str(lama, 80), n = str(baru, 80);
           if (!l || !n || l === n) continue;
           q.push(col === 'unit'
-            ? sql`update peta_alumni.alumni set unit=${n}, updated_at=now() where unit=${l}`
+            ? sql`update peta_alumni.alumni set unit = case when unit=${l} then ${n} else unit end,
+                    unit_nonformal = case when unit_nonformal=${l} then ${n} else unit_nonformal end, updated_at=now()
+                  where unit=${l} or unit_nonformal=${l}`
             : sql`update peta_alumni.alumni set asrama=${n}, updated_at=now() where asrama=${l}`);
           diganti++;
         }
       }
+      // Pindahkan data agar kolom sesuai jenis unit (formal / non formal)
+      const nf = next.unit.filter((u) => u.jenis === 'nonformal').map((u) => u.nama);
+      const fm = next.unit.filter((u) => u.jenis === 'formal').map((u) => u.nama);
+      q.push(sql`update peta_alumni.alumni set unit_nonformal = coalesce(unit_nonformal, unit), unit = null, updated_at=now()
+                 where unit = any(${nf}::text[]) and (unit_nonformal is null or unit_nonformal = unit)`);
+      q.push(sql`update peta_alumni.alumni set unit = unit_nonformal, unit_nonformal = null, updated_at=now()
+                 where unit is null and unit_nonformal = any(${fm}::text[])`);
       await sql.transaction(q);
       return send(res, 200, { data: next, diganti });
     }

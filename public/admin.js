@@ -17,7 +17,7 @@
     eye: '<svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>'
   };
   const NEGARA = ['Indonesia', 'Arab Saudi', 'Mesir', 'Malaysia', 'Singapura', 'Brunei Darussalam', 'Yaman', 'Sudan', 'Maroko', 'Turki', 'Jerman', 'Belanda', 'Inggris', 'Amerika Serikat', 'Jepang', 'Korea Selatan', 'Taiwan', 'Hong Kong', 'Australia', 'Qatar', 'Uni Emirat Arab', 'Pakistan', 'India', 'Tiongkok'];
-  const COLS = ['nama', 'tahun_masuk', 'tahun_lulus', 'unit', 'asrama', 'negara', 'provinsi', 'kota', 'pekerjaan', 'instansi', 'whatsapp', 'lat', 'lng', 'lokasi_samar'];
+  const COLS = ['nama', 'tahun_masuk', 'tahun_lulus', 'unit', 'unit_nonformal', 'asrama', 'negara', 'provinsi', 'kota', 'pekerjaan', 'instansi', 'whatsapp', 'lat', 'lng', 'lokasi_samar'];
 
   const S = {
     key: null, tab: 'data', rows: [], settings: null,
@@ -43,6 +43,9 @@
     updatePendingCount();
   }
   const unitColor = (u) => ((S.settings && S.settings.unit.find((x) => x.nama === u)) || {}).warna || '#5F6368';
+  const NF_RE = /diniyah|salafiyah|madin|tpq|tpa|tahfi[dz]h?|ma'?had|pengajian/i;
+  const jenisOf = (u) => (u.jenis === 'formal' || u.jenis === 'nonformal' ? u.jenis : NF_RE.test(u.nama || '') ? 'nonformal' : 'formal');
+  const unitsOf = (r) => [r.unit, r.unit_nonformal].filter(Boolean);
   function updatePendingCount() { const n = S.rows.filter((r) => !r.approved).length; $('#cntPending').textContent = n ? n : ''; }
 
   // ---------------- LOGIN ----------------
@@ -85,8 +88,8 @@
     const q = S.q.trim().toLowerCase();
     let a = S.rows.filter((r) =>
       (S.status === 'semua' || (S.status === 'tampil' ? r.approved : !r.approved)) &&
-      (!S.unit || r.unit === S.unit) &&
-      (!q || [r.nama, r.kota, r.provinsi, r.negara, r.asrama, r.pekerjaan, r.instansi, r.whatsapp, String(r.tahun_lulus)].some((v) => v && String(v).toLowerCase().includes(q))));
+      (!S.unit || unitsOf(r).includes(S.unit)) &&
+      (!q || [r.nama, r.kota, r.provinsi, r.negara, r.unit, r.unit_nonformal, r.asrama, r.pekerjaan, r.instansi, r.whatsapp, String(r.tahun_lulus)].some((v) => v && String(v).toLowerCase().includes(q))));
     const { k, dir } = S.sort;
     a.sort((x, y) => { const p = x[k] ?? '', q2 = y[k] ?? ''; return (typeof p === 'number' && typeof q2 === 'number' ? p - q2 : String(p).localeCompare(String(q2))) * dir; });
     return a;
@@ -94,7 +97,7 @@
   function renderData() {
     const total = S.rows.length, pend = S.rows.filter((r) => !r.approved).length;
     const prov = new Set(S.rows.map((r) => (r.negara && r.negara !== 'Indonesia' ? r.negara : r.provinsi)).filter(Boolean)).size;
-    const units = [...new Set(S.settings.unit.map((u) => u.nama).concat(S.rows.map((r) => r.unit)))];
+    const units = [...new Set(S.settings.unit.map((u) => u.nama).concat(S.rows.flatMap(unitsOf)))];
     $('#content').innerHTML = `
       <h2 class="title">Data alumni</h2><p class="sub">Tambah, ubah, setujui, atau hapus data alumni. Impor massal dari CSV/Excel.</p>
       <div class="cards">
@@ -145,7 +148,7 @@
         <td><input type="checkbox" class="sel1" ${S.sel.has(r.id) ? 'checked' : ''}/></td>
         <td class="nm"><b>${esc(r.nama)}</b><small>${esc([r.pekerjaan, r.instansi].filter(Boolean).join(' · ') || '—')}</small></td>
         <td>${r.tahun_masuk ? r.tahun_masuk + '–' : ''}${r.tahun_lulus}</td>
-        <td><span class="dot" style="background:${unitColor(r.unit)}"></span>${esc(r.unit)}</td>
+        <td>${unitsOf(r).map((u) => `<span class="dot" style="background:${unitColor(u)}"></span>${esc(u)}`).join('<br>') || '—'}</td>
         <td>${esc(r.asrama || '—')}</td>
         <td>${esc([r.kota, r.provinsi, r.negara && r.negara !== 'Indonesia' ? r.negara : null].filter(Boolean).join(', ') || '—')}</td>
         <td>${r.approved ? '<span class="chip ok">Tampil</span>' : '<span class="chip wait">Menunggu</span>'}</td>
@@ -211,15 +214,20 @@
     const a = r || { approved: true, lokasi_samar: false };
     const cy = new Date().getFullYear();
     const yrs = (sel) => { let o = '<option value="">—</option>'; for (let y = cy; y >= 1950; y--) o += `<option ${+sel === y ? 'selected' : ''}>${y}</option>`; return o; };
-    const units = [...new Set(S.settings.unit.map((u) => u.nama).concat(a.unit ? [a.unit] : []))];
+    const extra = (v, j) => (v && !S.settings.unit.some((u) => u.nama === v && jenisOf(u) === j) ? [v] : []);
+    const uF = S.settings.unit.filter((u) => jenisOf(u) === 'formal').map((u) => u.nama).concat(extra(a.unit, 'formal'));
+    const uN = S.settings.unit.filter((u) => jenisOf(u) === 'nonformal').map((u) => u.nama).concat(extra(a.unit_nonformal, 'nonformal'));
+    const opts = (list, v) => '<option value="">Tidak ada</option>' + list.map((u) => `<option ${v === u ? 'selected' : ''}>${esc(u)}</option>`).join('');
     openModal(`<div class="m-head"><h3>${r ? 'Ubah data alumni' : 'Tambah alumni'}</h3><button class="icon-btn" data-x>${I.close}</button></div>
       <form class="m-body" id="fAl" novalidate>
         <div class="field"><label>Nama lengkap *</label><input name="nama" maxlength="120" value="${esc(a.nama || '')}" required /></div>
-        <div class="grid3">
+        <div class="grid2">
           <div class="field"><label>Tahun masuk</label><select name="tahun_masuk">${yrs(a.tahun_masuk)}</select></div>
           <div class="field"><label>Tahun lulus *</label><select name="tahun_lulus">${yrs(a.tahun_lulus)}</select></div>
-          <div class="field"><label>Unit pendidikan *</label><select name="unit"><option value="">—</option>${units.map((u) => `<option ${a.unit === u ? 'selected' : ''}>${esc(u)}</option>`).join('')}</select></div>
+          <div class="field"><label>Unit formal</label><select name="unit">${opts(uF, a.unit)}</select></div>
+          <div class="field"><label>Unit non formal</label><select name="unit_nonformal">${opts(uN, a.unit_nonformal)}</select></div>
         </div>
+        <p class="hint" style="margin-top:-4px">Isi minimal salah satu unit, formal atau non formal.</p>
         <div class="grid2">
           <div class="field"><label>Asrama</label><select name="asrama"><option value="">— Tidak ada —</option>${[...S.settings.asrama, ...(a.asrama && !S.settings.asrama.includes(a.asrama) ? [a.asrama] : [])].map((x) => `<option ${a.asrama === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></div>
           <div class="field"><label>No. WhatsApp</label><input name="whatsapp" maxlength="20" value="${esc(a.whatsapp || '')}" /></div>
@@ -288,16 +296,16 @@
     const rows = parseCsv(await file.text());
     if (rows.length < 2) return toast('File CSV kosong.');
     const head = rows[0].map((h) => h.trim().toLowerCase().replace(/\s+/g, '_'));
-    const alias = { latitude: 'lat', longitude: 'lng', lon: 'lng', long: 'lng', no_wa: 'whatsapp', wa: 'whatsapp', unit_pendidikan: 'unit', country: 'negara', tahun_keluar: 'tahun_lulus', kabupaten: 'kota', kota_kabupaten: 'kota' };
+    const alias = { latitude: 'lat', longitude: 'lng', lon: 'lng', long: 'lng', no_wa: 'whatsapp', wa: 'whatsapp', unit_pendidikan: 'unit', unit_formal: 'unit', non_formal: 'unit_nonformal', unit_non_formal: 'unit_nonformal', country: 'negara', tahun_keluar: 'tahun_lulus', kabupaten: 'kota', kota_kabupaten: 'kota' };
     const keys = head.map((h) => alias[h] || h);
-    if (!keys.includes('nama') || !keys.includes('tahun_lulus') || !keys.includes('unit') || !keys.includes('lat') || !keys.includes('lng'))
+    if (!keys.includes('nama') || !keys.includes('tahun_lulus') || !(keys.includes('unit') || keys.includes('unit_nonformal')) || !keys.includes('lat') || !keys.includes('lng'))
       return importHelp('Kolom wajib tidak ditemukan. Pastikan baris pertama berisi judul kolom.');
     const items = rows.slice(1).map((r) => { const o = {}; keys.forEach((k, i) => { if (COLS.includes(k) || k === 'approved') o[k] = (r[i] ?? '').trim(); }); return o; });
     items.forEach((o) => { if (o.lokasi_samar !== undefined) o.lokasi_samar = /^(1|true|ya|y|yes)$/i.test(String(o.lokasi_samar).trim()); if (o.approved !== undefined) o.approved = !/^(0|false|tidak|no|n)$/i.test(o.approved); });
     openModal(`<div class="m-head"><h3>Impor ${items.length} baris</h3><button class="icon-btn" data-x>${I.close}</button></div>
       <div class="m-body"><p>Pratinjau 10 baris pertama dari <b>${esc(file.name)}</b>. Baris yang tidak valid akan dilewati dan dilaporkan.</p>
-      <div class="preview"><table><thead><tr>${['nama', 'tahun_lulus', 'unit', 'asrama', 'kota', 'lat', 'lng'].map((k) => `<th class="nosort">${k}</th>`).join('')}</tr></thead>
-      <tbody>${items.slice(0, 10).map((o) => `<tr>${['nama', 'tahun_lulus', 'unit', 'asrama', 'kota', 'lat', 'lng'].map((k) => `<td>${esc(o[k] || '')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+      <div class="preview"><table><thead><tr>${['nama', 'tahun_lulus', 'unit', 'unit_nonformal', 'asrama', 'kota', 'lat', 'lng'].map((k) => `<th class="nosort">${k}</th>`).join('')}</tr></thead>
+      <tbody>${items.slice(0, 10).map((o) => `<tr>${['nama', 'tahun_lulus', 'unit', 'unit_nonformal', 'asrama', 'kota', 'lat', 'lng'].map((k) => `<td>${esc(o[k] || '')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
       <p class="err" id="impErr"></p></div>
       <div class="m-foot"><button class="btn text left" id="tplBtn">Unduh template</button><button class="btn text" data-x>Batal</button><button class="btn primary" id="impGo">Impor sekarang</button></div>`);
     $('#tplBtn').onclick = downloadTemplate;
@@ -321,12 +329,12 @@
   });
   function downloadTemplate() {
     download('template-impor-alumni.csv', COLS.join(',') + '\r\n' +
-      ['Ahmad Fauzi', 2010, 2013, 'MA', S.settings.asrama[0] || '', 'Indonesia', 'Jawa Timur', 'Surabaya', 'Guru', 'MI Nurul Huda', '081234567890', -7.2575, 112.7521, 'ya'].map(csvCell).join(','));
+      ['Ahmad Fauzi', 2010, 2013, (S.settings.unit.find((u) => jenisOf(u) === 'formal') || {}).nama || '', (S.settings.unit.find((u) => jenisOf(u) === 'nonformal') || {}).nama || '', S.settings.asrama[0] || '', 'Indonesia', 'Jawa Timur', 'Surabaya', 'Guru', 'MI Nurul Huda', '081234567890', -7.2575, 112.7521, 'ya'].map(csvCell).join(','));
   }
   function importHelp(msg) {
     openModal(`<div class="m-head"><h3>Format CSV</h3><button class="icon-btn" data-x>${I.close}</button></div>
       <div class="m-body"><p class="bad">${esc(msg)}</p><p>Baris pertama berisi judul kolom berikut (urutan bebas; pemisah koma atau titik koma):</p>
-      <pre class="code">${COLS.join(',')}</pre><p>Wajib: <b>nama, tahun_lulus, unit, lat, lng</b>. Kolom <b>lokasi_samar</b> diisi ya/tidak.</p></div>
+      <pre class="code">${COLS.join(',')}</pre><p>Wajib: <b>nama, tahun_lulus, lat, lng</b>, serta minimal salah satu dari <b>unit</b> (formal) atau <b>unit_nonformal</b>. Kolom <b>lokasi_samar</b> diisi ya/tidak.</p></div>
       <div class="m-foot"><button class="btn outline" id="tplBtn2">Unduh template</button><button class="btn primary" data-x>Mengerti</button></div>`);
     $('#tplBtn2').onclick = downloadTemplate;
   }
@@ -335,12 +343,13 @@
   function renderListEditor(kind) {
     const isUnit = kind === 'unit';
     const src = isUnit ? S.settings.unit : S.settings.asrama.map((n) => ({ nama: n }));
-    S.edit = src.map((x) => ({ nama: x.nama, warna: x.warna, asli: x.nama }));
+    S.edit = src.map((x) => ({ nama: x.nama, warna: x.warna, jenis: isUnit ? jenisOf(x) : undefined, asli: x.nama }));
     S.dirty = false;
-    const cnt = (n) => S.rows.filter((r) => r[kind] === n).length;
-    const unlisted = [...new Set(S.rows.map((r) => r[kind]).filter((v) => v && !src.some((x) => x.nama === v)))];
+    const vals = (r) => (isUnit ? unitsOf(r) : [r[kind]]);
+    const cnt = (n) => S.rows.filter((r) => vals(r).includes(n)).length;
+    const unlisted = [...new Set(S.rows.flatMap(vals).filter((v) => v && !src.some((x) => x.nama === v)))];
     $('#content').innerHTML = `<h2 class="title">${isUnit ? 'Unit pendidikan' : 'Asrama'}</h2>
-      <p class="sub">${isUnit ? 'Daftar unit yang bisa dipilih alumni. Warna dipakai untuk pin di peta.' : 'Daftar asrama yang bisa dipilih alumni. Isian asrama di formulir hanya bisa memilih dari daftar ini.'} Mengganti nama otomatis memperbarui data alumni yang memakai nama lama.</p>
+      <p class="sub">${isUnit ? 'Daftar unit yang bisa dipilih alumni. Pilih jenisnya, formal atau non formal. Alumni boleh memilih satu unit dari masing-masing jenis. Warna dipakai untuk pin di peta.' : 'Daftar asrama yang bisa dipilih alumni. Isian asrama di formulir hanya bisa memilih dari daftar ini.'} Mengganti nama otomatis memperbarui data alumni yang memakai nama lama.</p>
       <div class="panel editor"><div id="lst"></div>
         <div class="editor-foot"><button class="btn tonal" id="addItem">${I.add}Tambah ${isUnit ? 'unit' : 'asrama'}</button>
           <span class="dirty-note hidden" id="dirty">Belum disimpan</span>
@@ -350,6 +359,7 @@
       $('#lst').innerHTML = S.edit.map((x, i) => `<div class="li" data-i="${i}">
         ${isUnit ? `<input type="color" value="${x.warna || '#5F6368'}" title="Warna pin" />` : ''}
         <input type="text" value="${esc(x.nama)}" placeholder="Nama ${isUnit ? 'unit' : 'asrama'}" maxlength="${isUnit ? 60 : 80}" />
+        ${isUnit ? `<select class="sel jenis" title="Jenis unit"><option value="formal" ${x.jenis === 'formal' ? 'selected' : ''}>Formal</option><option value="nonformal" ${x.jenis === 'nonformal' ? 'selected' : ''}>Non formal</option></select>` : ''}
         ${x.asli && x.asli !== x.nama.trim() ? `<span class="renamed">dari "${esc(x.asli)}"</span>` : ''}
         <span class="n">${x.asli ? cnt(x.asli) + ' alumni' : 'baru'}</span>
         <button class="icon-btn" data-up title="Naik" ${i ? '' : 'disabled'}>${I.up}</button>
@@ -359,6 +369,7 @@
         const i = +el.dataset.i, x = S.edit[i];
         const txt = $('input[type=text]', el); txt.oninput = () => { x.nama = txt.value; dirty(); }; txt.onchange = draw;
         const col = $('input[type=color]', el); if (col) col.oninput = () => { x.warna = col.value; dirty(); };
+        const jen = $('select.jenis', el); if (jen) jen.onchange = () => { x.jenis = jen.value; dirty(); };
         $('[data-up]', el).onclick = () => { [S.edit[i - 1], S.edit[i]] = [S.edit[i], S.edit[i - 1]]; dirty(); draw(); };
         $('[data-down]', el).onclick = () => { [S.edit[i + 1], S.edit[i]] = [S.edit[i], S.edit[i + 1]]; dirty(); draw(); };
         $('[data-rm]', el).onclick = () => {
@@ -370,8 +381,8 @@
     };
     const dirty = () => { S.dirty = true; $('#dirty').classList.remove('hidden'); };
     draw();
-    $('#addItem').onclick = () => { S.edit.push({ nama: '', warna: '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0'), asli: null }); dirty(); draw(); $$('.li input[type=text]').pop().focus(); };
-    $$('[data-addname]').forEach((b) => b.onclick = () => { S.edit.push({ nama: b.dataset.addname, warna: '#5F6368', asli: b.dataset.addname }); b.remove(); dirty(); draw(); });
+    $('#addItem').onclick = () => { S.edit.push({ nama: '', jenis: 'formal', warna: '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0'), asli: null }); dirty(); draw(); $$('.li input[type=text]').pop().focus(); };
+    $$('[data-addname]').forEach((b) => b.onclick = () => { S.edit.push({ nama: b.dataset.addname, warna: '#5F6368', jenis: jenisOf({ nama: b.dataset.addname }), asli: b.dataset.addname }); b.remove(); dirty(); draw(); });
     $('#resetItems').onclick = () => renderListEditor(kind);
     $('#saveItems').onclick = async () => {
       const items = S.edit.map((x) => ({ ...x, nama: x.nama.trim() })).filter((x) => x.nama);
@@ -379,12 +390,12 @@
       if (names.some((n, i) => names.indexOf(n) !== i)) return toast('Ada nama yang sama, periksa kembali.');
       if (isUnit && !items.length) return toast('Minimal harus ada satu unit.');
       const ganti = {}; items.forEach((x) => { if (x.asli && x.asli !== x.nama) ganti[x.asli] = x.nama; });
-      const body = isUnit ? { unit: items.map((x) => ({ nama: x.nama, warna: x.warna })), ganti_unit: ganti } : { asrama: items.map((x) => x.nama), ganti_asrama: ganti };
+      const body = isUnit ? { unit: items.map((x) => ({ nama: x.nama, warna: x.warna, jenis: x.jenis })), ganti_unit: ganti } : { asrama: items.map((x) => x.nama), ganti_asrama: ganti };
       const btn = $('#saveItems'); btn.disabled = true;
       try {
         const j = await api('r=pengaturan', { method: 'PUT', body });
         S.settings = j.data; S.dirty = false;
-        if (Object.keys(ganti).length) await loadAll();
+        if (isUnit || Object.keys(ganti).length) await loadAll();
         renderListEditor(kind); toast('Tersimpan.' + (Object.keys(ganti).length ? ' Data alumni dengan nama lama ikut diperbarui.' : ''));
       } catch (e) { toast(e.message); btn.disabled = false; }
     };

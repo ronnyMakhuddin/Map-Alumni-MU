@@ -151,3 +151,4 @@ pre.code { background: var(--surface); padding: 10px 12px; border-radius: 8px; f
   .brand small { display: none; }
   .grid3 { grid-template-columns: 1fr 1fr; }
 }
+.li select.jenis { height: 36px; width: auto; min-width: 118px; flex: 0 0 auto; }

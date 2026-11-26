@@ -42,6 +42,12 @@
   const wilayahOf = (a) => (isLN(a) ? a.negara : a.provinsi || '—');
   const placeOf = (a) => [a.kota, a.provinsi, isLN(a) ? a.negara : null].filter(Boolean).join(', ');
   const unitColor = (u) => (C.unit.find((x) => x.nama === u) || {}).warna || '#5F6368';
+  // Alumni bisa punya unit formal (unit) dan/atau non formal (unit_nonformal)
+  const NF_RE = /diniyah|salafiyah|madin|tpq|tpa|tahfi[dz]h?|ma'?had|pengajian/i;
+  const jenisOf = (u) => (u.jenis === 'formal' || u.jenis === 'nonformal' ? u.jenis : NF_RE.test(u.nama) ? 'nonformal' : 'formal');
+  const unitsOf = (a) => [a.unit, a.unit_nonformal].filter(Boolean);
+  const mainUnit = (a) => a.unit || a.unit_nonformal || '';
+  const unitText = (a) => unitsOf(a).join(' · ') || '—';
   const initials = (n) => String(n || '?').replace(/[^\p{L}\s]/gu, '').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?';
   const fmtKm = (m) => (m < 1000 ? Math.round(m) + ' m' : (m < 10000 ? (m / 1000).toFixed(1) : Math.round(m / 1000)) + ' km');
   const fmtCoord = (lat, lng) => `${(+lat).toFixed(5)}, ${(+lng).toFixed(5)}`;
@@ -74,7 +80,7 @@
   }).addTo(map);
   const markers = new Map();
   function pinIcon(a, sel) {
-    const col = unitColor(a.unit);
+    const col = unitColor(mainUnit(a));
     return L.divIcon({
       className: '', iconSize: [28, 38], iconAnchor: [14, 37], popupAnchor: [0, -34],
       html: `<div class="pin${sel ? ' sel' : ''}"><svg viewBox="0 0 28 38"><path d="M14 0C6.3 0 0 6.2 0 13.9 0 24.3 14 38 14 38s14-13.7 14-24.1C28 6.2 21.7 0 14 0z" fill="${col}" stroke="rgba(0,0,0,.18)"/></svg><b>${esc(initials(a.nama))}</b></div>`
@@ -121,7 +127,7 @@
       if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
       const j = await r.json();
       const next = (j.data || []).map(normalize);
-      const sig = (arr) => arr.map((a) => a.id + ':' + a.lat + ':' + a.lng + ':' + a.nama + ':' + a.unit + ':' + a.tahun_lulus).join('|');
+      const sig = (arr) => arr.map((a) => a.id + ':' + a.lat + ':' + a.lng + ':' + a.nama + ':' + a.unit + ':' + a.unit_nonformal + ':' + a.tahun_lulus).join('|');
       const changed = !S.loaded || sig(next) !== sig(S.all);
       S.all = next; S.demo = false; S.loaded = true; S.loadError = null;
       if (!changed) return;
@@ -153,11 +159,11 @@
     const kerja = ['Guru','Pengasuh pesantren','Dosen','Wiraswasta','Mahasiswa','Dokter','ASN','Penghulu','Petani','Pedagang','Imam masjid','Programmer','Perawat','Notaris'];
     let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
-    const units = C.unit.map((u) => u.nama).slice(0, 7);
+    const uF = C.unit.filter((u) => jenisOf(u) === 'formal').map((u) => u.nama), uN = C.unit.filter((u) => jenisOf(u) === 'nonformal').map((u) => u.nama);
     S.all = Array.from({ length: 180 }, (_, i) => {
       const k = rnd() < .55 ? pick(kota.slice(0, 10)) : pick(kota);
       const lulus = 1990 + Math.floor(rnd() * 36);
-      return { id: i + 1, nama: `${pick(dep)} ${pick(bel)}`, tahun_masuk: lulus - 3, tahun_lulus: lulus, unit: pick(units), asrama: pick(C.asrama),
+      return { id: i + 1, nama: `${pick(dep)} ${pick(bel)}`, tahun_masuk: lulus - 3, tahun_lulus: lulus, unit: rnd() < .85 && uF.length ? pick(uF) : null, unit_nonformal: rnd() < .5 && uN.length ? pick(uN) : null, asrama: pick(C.asrama),
         negara: k[4] || 'Indonesia', provinsi: k[1], kota: k[0], pekerjaan: pick(kerja), instansi: null, whatsapp: null,
         lat: k[2] + (rnd() - .5) * .18, lng: k[3] + (rnd() - .5) * .18, lokasi_samar: true, created_at: new Date().toISOString() };
     });
@@ -169,9 +175,9 @@
     const f = S.filters; const q = S.q.trim().toLowerCase();
     S.filtered = S.all.filter((a) =>
       (!f.tahunDari || a.tahun_lulus >= f.tahunDari) && (!f.tahunSampai || a.tahun_lulus <= f.tahunSampai) &&
-      (!f.provinsi.size || f.provinsi.has(wilayahOf(a))) && (!f.unit.size || f.unit.has(a.unit)) &&
+      (!f.provinsi.size || f.provinsi.has(wilayahOf(a))) && (!f.unit.size || unitsOf(a).some((u) => f.unit.has(u))) &&
       (!f.asrama.size || f.asrama.has(a.asrama || '—')) &&
-      (!q || [a.nama, a.kota, a.provinsi, a.negara, a.pekerjaan, a.instansi, a.asrama, a.unit, String(a.tahun_lulus)].some((v) => v && String(v).toLowerCase().includes(q))));
+      (!q || [a.nama, a.kota, a.provinsi, a.negara, a.pekerjaan, a.instansi, a.asrama, a.unit, a.unit_nonformal, String(a.tahun_lulus)].some((v) => v && String(v).toLowerCase().includes(q))));
     S.listLimit = 60;
     renderMarkers(); renderChips(); renderView();
   }
@@ -187,6 +193,7 @@
     set('asrama', f.asrama.size > 0, chipLabel(f.asrama, 'Asrama'));
     $('#chipReset').classList.toggle('hidden', !filterActive());
   }
+  function countsMulti(fn, arr = S.all) { const m = new Map(); for (const a of arr) for (const v of fn(a)) m.set(v, (m.get(v) || 0) + 1); return m; }
   function countsBy(fn) { const m = new Map(); for (const a of S.all) { const v = fn(a); m.set(v, (m.get(v) || 0) + 1); } return m; }
   function counts(key) {
     const m = new Map(); for (const a of S.all) { const v = a[key] || '—'; m.set(v, (m.get(v) || 0) + 1); } return m;
@@ -206,7 +213,7 @@
         <p class="fgroup" style="margin:4px 12px 6px">Angkatan yang terdaftar</p>
         ${years.map((y) => `<div class="opt" data-year="${y}"><span class="dot" style="background:var(--g-green)"></span>Lulus ${y}<span class="cnt">${cnt.get(y)}</span></div>`).join('') || '<p class="empty">Belum ada data.</p>'}`;
     } else {
-      const cnt = kind === 'provinsi' ? countsBy(wilayahOf) : counts(kind);
+      const cnt = kind === 'provinsi' ? countsBy(wilayahOf) : kind === 'unit' ? countsMulti(unitsOf) : counts(kind);
       let opts = kind === 'unit' ? C.unit.map((u) => u.nama) : kind === 'provinsi' ? C.provinsi.slice() : C.asrama.slice();
       for (const k of cnt.keys()) if (!opts.includes(k)) opts.push(k);
       opts = opts.filter((o) => cnt.has(o) || f[kind].has(o));
@@ -328,11 +335,11 @@
     return arr.map((a) => ({ a, d: c.distanceTo([a.lat, a.lng]) })).sort((x, y) => x.d - y.d);
   }
   function rowHTML(a, d) {
-    const col = unitColor(a.unit);
+    const col = unitColor(mainUnit(a));
     return `<li><button class="row" data-id="${a.id}">
       <span class="av" style="background:${col}">${esc(initials(a.nama))}</span>
       <span class="row-main"><b>${esc(a.nama)}</b>
-        <span class="meta"><span>Lulus ${a.tahun_lulus}</span><span>${esc(a.unit)}</span>${a.asrama ? `<span>${esc(a.asrama)}</span>` : ''}</span>
+        <span class="meta"><span>Lulus ${a.tahun_lulus}</span><span>${esc(unitText(a))}</span>${a.asrama ? `<span>${esc(a.asrama)}</span>` : ''}</span>
         <span class="meta" style="display:block">${esc(placeOf(a) || fmtCoord(a.lat, a.lng))}</span>
         ${a.pekerjaan ? `<span class="tag" style="background:${col}1A;color:${col}">${esc(a.pekerjaan)}</span>` : ''}
       </span>${d != null && S.me ? `<span class="row-dist">${fmtKm(d)}</span>` : ''}</button></li>`;
@@ -344,7 +351,7 @@
       ? `<h2>${vis.length} alumni di area ini ${demoBadge()}</h2><p>${S.filtered.length} alumni${filterActive() || S.q ? ' sesuai filter' : ''} · ${prov.size} wilayah</p>`
       : S.loadError ? `<h2>Data belum bisa dimuat</h2><p>${esc(S.loadError)}. Muat ulang halaman untuk mencoba lagi.</p>`
       : `<h2>Belum ada alumni di peta ${demoBadge()}</h2><p>Jadilah yang pertama menandai lokasi Anda.</p>`;
-    const units = counts('unit');
+    const units = countsMulti(unitsOf, S.filtered);
     return `<div class="sec-head">${head}</div>
       <div class="quick">
         <button class="qcard" data-go="list"><b>${S.filtered.length}</b><small>Total alumni</small></button>
@@ -362,7 +369,7 @@
         : `<div class="empty">${ICON.group}<p>Belum ada alumni yang cocok.</p><button class="btn-tonal" data-go="form">Tambah lokasi saya</button></div>`}`;
   }
   function bars(key, title, color, limit = 10, labelFn = (k) => k, valFn) {
-    const m = new Map(); for (const a of S.filtered) { const v = valFn ? valFn(a) : a[key] || '—'; m.set(v, (m.get(v) || 0) + 1); }
+    const m = new Map(); for (const a of S.filtered) { const v = valFn ? valFn(a) : a[key] || '—'; for (const x of Array.isArray(v) ? v : [v]) m.set(x, (m.get(x) || 0) + 1); }
     const arr = [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit); const max = arr[0] ? arr[0][1] : 1;
     return `<div class="stat-block"><h3>${title}</h3>${arr.map(([k, n]) => `<button class="bar" data-f="${key}" data-v="${esc(k)}"><span class="lbl">${esc(labelFn(k))}</span>
       <span class="trk"><span class="fil" style="width:${(n / max) * 100}%;background:${typeof color === 'function' ? color(k) : color}"></span></span><span class="num">${n}</span></button>`).join('') || '<p class="empty">Belum ada data.</p>'}</div>`;
@@ -372,18 +379,18 @@
     const decArr = Object.entries(dec).sort((a, b) => a[0] - b[0]); const max = Math.max(1, ...decArr.map((x) => x[1]));
     return `<div class="sec-head"><h2>Statistik alumni ${demoBadge()}</h2><p>${S.filtered.length} alumni${filterActive() ? ' sesuai filter' : ''}. Ketuk baris untuk memfilter.</p></div>
       ${bars('provinsi', 'Sebaran wilayah', (k) => (S.all.some((a) => isLN(a) && a.negara === k) ? '#E8710A' : '#1A73E8'), 12, (k) => k, wilayahOf)}
-      ${bars('unit', 'Unit pendidikan', unitColor, 12)}
+      ${bars('unit', 'Unit pendidikan', unitColor, 14, (k) => k, unitsOf)}
       ${bars('asrama', 'Asrama', '#9334E6', 12)}
       <div class="stat-block"><h3>Lulusan per dekade</h3>${decArr.map(([d, n]) => `<div class="bar"><span class="lbl">${d}-an</span><span class="trk"><span class="fil" style="width:${(n / max) * 100}%;background:#0B8043"></span></span><span class="num">${n}</span></div>`).join('') || '<p class="empty">Belum ada data.</p>'}</div>`;
   }
   function viewDetail() {
     const a = S.all.find((x) => x.id === S.selected); if (!a) return '';
-    const col = unitColor(a.unit); const mine = S.mine && S.mine.id === a.id;
+    const col = unitColor(mainUnit(a)); const mine = S.mine && S.mine.id === a.id;
     const dist = S.me ? fmtKm(L.latLng(S.me).distanceTo([a.lat, a.lng])) + ' dari Anda' : '';
     const wa = a.whatsapp ? a.whatsapp.replace(/^0/, '62').replace(/^\+/, '') : '';
     return `<div class="detail-hero"><button class="icon-btn detail-close" data-close>${ICON.close}</button>
         <span class="detail-av" style="background:${col}">${esc(initials(a.nama))}</span></div>
-      <div class="detail-head"><h2>${esc(a.nama)}</h2><p>Alumni ${esc(a.unit)} · Lulus ${a.tahun_lulus}${dist ? ' · ' + dist : ''}</p></div>
+      <div class="detail-head"><h2>${esc(a.nama)}</h2><p>Alumni ${esc(unitText(a))} · Lulus ${a.tahun_lulus}${dist ? ' · ' + dist : ''}</p></div>
       <div class="actions">
         <a class="act primary" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${a.lat},${a.lng}"><span>${ICON.dir}</span>Rute</a>
         ${wa ? `<a class="act wa" target="_blank" rel="noopener" href="https://wa.me/${esc(wa)}?text=${encodeURIComponent('Assalamu\'alaikum, saya alumni Mamba\'ul Ulum. Salam kenal!')}"><span>${ICON.wa}</span>WhatsApp</a>` : ''}
@@ -393,7 +400,7 @@
       </div>
       <ul class="info">
         <li>${ICON.map}<div>${esc(placeOf(a) || 'Lokasi tidak disebutkan')}<small>${a.lokasi_samar ? 'Lokasi perkiraan (±1 km)' : 'Lokasi tepat'}</small></div></li>
-        <li>${ICON.cap}<div>${esc(a.unit)}<small>${a.tahun_masuk ? `Angkatan ${a.tahun_masuk} – ${a.tahun_lulus}` : `Lulus tahun ${a.tahun_lulus}`}</small></div></li>
+        <li>${ICON.cap}<div>${esc(unitText(a))}<small>${a.tahun_masuk ? `Angkatan ${a.tahun_masuk} – ${a.tahun_lulus}` : `Lulus tahun ${a.tahun_lulus}`}</small></div></li>
         ${a.asrama ? `<li>${ICON.home}<div>${esc(a.asrama)}<small>Asrama</small></div></li>` : ''}
         ${a.pekerjaan || a.instansi ? `<li>${ICON.work}<div>${esc(a.pekerjaan || '')}${a.instansi ? `<small>${esc(a.instansi)}</small>` : ''}</div></li>` : ''}
         <li>${ICON.coord}<div><span style="font-family:ui-monospace,monospace">${fmtCoord(a.lat, a.lng)}</span><small>Koordinat · ketuk untuk menyalin</small></div></li>
@@ -448,6 +455,7 @@
     const a = mine || {};
     const cy = new Date().getFullYear();
     const years = (sel) => { let o = '<option value="">Pilih tahun</option>'; for (let y = cy; y >= 1950; y--) o += `<option ${+sel === y ? 'selected' : ''}>${y}</option>`; return o; };
+    const uFormal = C.unit.filter((u) => jenisOf(u) === 'formal'), uNon = C.unit.filter((u) => jenisOf(u) === 'nonformal');
     return `<form class="form" id="alumniForm" novalidate>
       <h2>${mine ? 'Perbarui data saya' : 'Tambah lokasi saya'}</h2>
       <p class="lead">Tandai lokasi rumah Anda saat ini agar sahabat sesama alumni ${esc(C.namaPondok)} bisa saling menemukan.</p>
@@ -458,7 +466,11 @@
         <div class="field"><label>Tahun masuk</label><select name="tahun_masuk">${years(a.tahun_masuk)}</select></div>
         <div class="field"><label>Tahun lulus *</label><select name="tahun_lulus" required>${years(a.tahun_lulus)}</select></div>
       </div>
-      <div class="field"><label>Unit pendidikan *</label><select name="unit" required><option value="">Pilih unit</option>${C.unit.map((u) => `<option ${a.unit === u.nama ? 'selected' : ''}>${esc(u.nama)}</option>`).join('')}</select></div>
+      <p class="hint" style="margin:0 0 12px;font-size:12px;color:#5F6368">Unit pendidikan: pilih minimal salah satu, formal atau non formal.</p>
+      <div class="two">
+        <div class="field"><label>Unit formal</label><select name="unit"><option value="">Tidak ada</option>${uFormal.map((u) => `<option ${a.unit === u.nama ? 'selected' : ''}>${esc(u.nama)}</option>`).join('')}</select></div>
+        <div class="field"><label>Unit non formal</label><select name="unit_nonformal"><option value="">Tidak ada</option>${uNon.map((u) => `<option ${a.unit_nonformal === u.nama ? 'selected' : ''}>${esc(u.nama)}</option>`).join('')}</select></div>
+      </div>
       <div class="field"><label>Asrama</label><select name="asrama"><option value="">Pilih asrama (kosongkan bila tidak mondok)</option>${C.asrama.map((x) => `<option ${a.asrama === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></div>
       <div class="two">
         <div class="field"><label>Pekerjaan / aktivitas</label><input name="pekerjaan" maxlength="120" value="${esc(a.pekerjaan || '')}" /></div>
@@ -585,7 +597,7 @@
       if (!d.nama || d.nama.trim().length < 2) return (msg.textContent = 'Nama wajib diisi.', f.nama.focus());
       if (!d.tahun_lulus) return (msg.textContent = 'Tahun lulus wajib dipilih.');
       if (d.tahun_masuk && +d.tahun_masuk > +d.tahun_lulus) return (msg.textContent = 'Tahun masuk tidak boleh setelah tahun lulus.');
-      if (!d.unit) return (msg.textContent = 'Unit pendidikan wajib dipilih.');
+      if (!d.unit && !d.unit_nonformal) return (msg.textContent = 'Pilih minimal satu unit pendidikan (formal atau non formal).');
       if (!isFinite(lat) || lat < -90 || lat > 90 || !isFinite(lng) || lng < -180 || lng > 180) return (msg.textContent = 'Lokasi belum valid. Gunakan Deteksi GPS, Pilih di peta, atau isi latitude/longitude.');
       if (!f.setuju.checked) return (msg.textContent = 'Centang persetujuan tampil publik terlebih dahulu.');
       const neg = (d.negara || '').trim() || 'Indonesia'; d.negara = neg;
@@ -673,8 +685,8 @@
     const v = q.value.trim();
     if (!v) { sug.classList.add('hidden'); return; }
     const hits = S.filtered.slice(0, 6);
-    sug.innerHTML = hits.map((a) => `<button class="sg-item" data-id="${a.id}"><span class="sg-ico" style="background:${unitColor(a.unit)};color:#fff">${ICON.person}</span>
-        <span><b>${esc(a.nama)}</b><small>${esc(a.unit)} · Lulus ${a.tahun_lulus} · ${esc(a.kota || (isLN(a) ? a.negara : a.provinsi) || '')}</small></span></button>`).join('') +
+    sug.innerHTML = hits.map((a) => `<button class="sg-item" data-id="${a.id}"><span class="sg-ico" style="background:${unitColor(mainUnit(a))};color:#fff">${ICON.person}</span>
+        <span><b>${esc(a.nama)}</b><small>${esc(unitText(a))} · Lulus ${a.tahun_lulus} · ${esc(a.kota || (isLN(a) ? a.negara : a.provinsi) || '')}</small></span></button>`).join('') +
       `<button class="sg-item" data-place><span class="sg-ico">${ICON.search}</span><span><b>Cari tempat "${esc(v)}"</b><small>Pindahkan peta ke lokasi ini</small></span></button>` +
       (S.filtered.length ? `<button class="sg-item" data-all><span class="sg-ico">${ICON.group}</span><span><b>Lihat semua ${S.filtered.length} hasil</b><small>Daftar alumni sesuai pencarian</small></span></button>` : '');
     sug.classList.remove('hidden');

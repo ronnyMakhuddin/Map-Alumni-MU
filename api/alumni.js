@@ -20,15 +20,15 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { perlu_persetujuan, asrama } = await getSettings();
-      const { data: d, error } = validateAlumni(await readBody(req), { asrama, strictAsrama: true });
+      const { perlu_persetujuan, asrama, unit } = await getSettings();
+      const { data: d, error } = validateAlumni(await readBody(req), { asrama, unit, strictAsrama: true });
       if (error) return send(res, 400, { error });
       const approved = !perlu_persetujuan;
       const [row] = await sql`
         insert into peta_alumni.alumni
-          (nama, tahun_masuk, tahun_lulus, unit, asrama, negara, provinsi, kota, pekerjaan, instansi, whatsapp, lat, lng, lokasi_samar, approved)
+          (nama, tahun_masuk, tahun_lulus, unit, unit_nonformal, asrama, negara, provinsi, kota, pekerjaan, instansi, whatsapp, lat, lng, lokasi_samar, approved)
         values
-          (${d.nama}, ${d.tahun_masuk}, ${d.tahun_lulus}, ${d.unit}, ${d.asrama}, ${d.negara}, ${d.provinsi}, ${d.kota},
+          (${d.nama}, ${d.tahun_masuk}, ${d.tahun_lulus}, ${d.unit}, ${d.unit_nonformal}, ${d.asrama}, ${d.negara}, ${d.provinsi}, ${d.kota},
            ${d.pekerjaan}, ${d.instansi}, ${d.whatsapp}, ${d.lat}, ${d.lng}, ${d.lokasi_samar}, ${approved})
         returning id, edit_token`;
       return send(res, 201, { id: row.id, edit_token: row.edit_token, pending: !approved });
@@ -39,12 +39,12 @@ export default async function handler(req, res) {
     if (!(typeof token === 'string' && UUID_RE.test(token))) return send(res, 401, { error: 'Token tidak valid.' });
 
     if (req.method === 'PUT') {
-      const { asrama } = await getSettings();
-      const { data: d, error } = validateAlumni(await readBody(req), { asrama, strictAsrama: true });
+      const { asrama, unit } = await getSettings();
+      const { data: d, error } = validateAlumni(await readBody(req), { asrama, unit, strictAsrama: true });
       if (error) return send(res, 400, { error });
       const rows = await sql`
         update peta_alumni.alumni set
-          nama=${d.nama}, tahun_masuk=${d.tahun_masuk}, tahun_lulus=${d.tahun_lulus}, unit=${d.unit},
+          nama=${d.nama}, tahun_masuk=${d.tahun_masuk}, tahun_lulus=${d.tahun_lulus}, unit=${d.unit}, unit_nonformal=${d.unit_nonformal},
           asrama=${d.asrama}, negara=${d.negara}, provinsi=${d.provinsi}, kota=${d.kota}, pekerjaan=${d.pekerjaan},
           instansi=${d.instansi}, whatsapp=${d.whatsapp}, lat=${d.lat}, lng=${d.lng},
           lokasi_samar=${d.lokasi_samar}, updated_at=now()

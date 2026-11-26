@@ -7,7 +7,7 @@ window.APP_CONFIG = {
   // Lokasi pondok (opsional) — tampil sebagai penanda khusus. null jika tidak dipakai.
   lokasiPondok: null, // contoh: { lat: -7.0, lng: 112.0, label: "Pondok Pesantren Mamba'ul Ulum" }
 
-  // Daftar unit pendidikan (warna = warna pin di peta)
+  // Daftar unit pendidikan (warna = warna pin di peta; jenis: formal / nonformal)
   unit: [
     { nama: "MI",                 warna: "#F9AB00" },
     { nama: "MTs",                warna: "#1A73E8" },
@@ -15,9 +15,8 @@ window.APP_CONFIG = {
     { nama: "MA",                 warna: "#0B8043" },
     { nama: "SMA",                warna: "#7CB342" },
     { nama: "SMK",                warna: "#E8710A" },
-    { nama: "Madrasah Diniyah",   warna: "#9334E6" },
-    { nama: "Tahfidz Al-Qur'an",  warna: "#D93025" },
-    { nama: "Ma'had Aly",         warna: "#5F6368" }
+    { nama: "Madrasah Diniyah",   warna: "#9334E6", jenis: "nonformal" },
+    { nama: "Madrasah Salafiyah", warna: "#5F6368", jenis: "nonformal" }
   ],
 
   // Daftar asrama bawaan (dipakai sebagai pilihan; aslinya diatur dari admin)

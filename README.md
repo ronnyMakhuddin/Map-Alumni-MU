@@ -3,7 +3,7 @@
 Aplikasi web peta sebaran alumni dengan tampilan ala Google Maps dan halaman pembuka bertema pesantren.
 
 - **Peta gratis tanpa API key**: Leaflet + OpenFreeMap (peta vektor, warna disesuaikan mirip Google Maps), mode Satelit (Esri) & Medan (OpenTopoMap). Bila WebGL tidak tersedia otomatis memakai tile OpenStreetMap.
-- **Filter**: tahun lulus (rentang), wilayah (provinsi, atau negara untuk alumni luar negeri), unit pendidikan, asrama. Bisa digabung dengan pencarian nama/kota/pekerjaan.
+- **Filter**: tahun lulus (rentang), wilayah (provinsi, atau negara untuk alumni luar negeri), unit pendidikan (formal dan non formal), asrama. Bisa digabung dengan pencarian nama/kota/pekerjaan.
 - **Input lokasi**: alumni mengisi latitude/longitude manual, **Deteksi GPS**, atau **Pilih di peta** (geser pin). Negara, kota & provinsi terisi otomatis (OpenStreetMap Nominatim).
 - **Privasi**: opsi "Samarkan lokasi (±1 km)" membulatkan koordinat di server sebelum disimpan. Nomor WA opsional.
 - **Ubah/hapus data sendiri** dari perangkat yang sama (token edit disimpan di browser).
@@ -43,9 +43,9 @@ Unit pendidikan, asrama, lokasi pondok, dan persetujuan data baru diatur dari **
 
 Baris pertama = judul kolom (pemisah koma atau titik koma, cocok dengan "Save as CSV" dari Excel):
 ```
-nama,tahun_masuk,tahun_lulus,unit,asrama,negara,provinsi,kota,pekerjaan,instansi,whatsapp,lat,lng,lokasi_samar
+nama,tahun_masuk,tahun_lulus,unit,unit_nonformal,asrama,negara,provinsi,kota,pekerjaan,instansi,whatsapp,lat,lng,lokasi_samar
 ```
-Wajib: `nama, tahun_lulus, unit, lat, lng`. Template bisa diunduh dari jendela impor.
+Wajib: `nama, tahun_lulus, lat, lng`, plus minimal salah satu dari `unit` (formal) atau `unit_nonformal`. Template bisa diunduh dari jendela impor.
 
 
 ## Mode contoh & lokal

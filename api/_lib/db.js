@@ -14,7 +14,7 @@ const DB_URL = findDbUrl();
 // globalThis.__SQL__ hanya dipakai server lokal (scripts/dev-server.js) untuk database tiruan
 export const sql = globalThis.__SQL__ || (DB_URL ? neon(DB_URL) : null);
 
-export const PUBLIC_COLS = `id, created_at, nama, tahun_masuk, tahun_lulus, unit, asrama, negara, provinsi, kota,
+export const PUBLIC_COLS = `id, created_at, nama, tahun_masuk, tahun_lulus, unit, unit_nonformal, asrama, negara, provinsi, kota,
   pekerjaan, instansi, whatsapp, lat, lng, lokasi_samar`;
 export const ADMIN_COLS = `${PUBLIC_COLS}, updated_at, approved`;
 
@@ -23,7 +23,7 @@ export const DEFAULT_SETTINGS = {
   unit: [
     { nama: 'MI', warna: '#F9AB00' }, { nama: 'MTs', warna: '#1A73E8' }, { nama: 'SMP', warna: '#12B5CB' },
     { nama: 'MA', warna: '#0B8043' }, { nama: 'SMA', warna: '#7CB342' }, { nama: 'SMK', warna: '#E8710A' },
-    { nama: 'Madrasah Diniyah', warna: '#9334E6' }, { nama: "Tahfidz Al-Qur'an", warna: '#D93025' }, { nama: "Ma'had Aly", warna: '#5F6368' }
+    { nama: 'Madrasah Diniyah', warna: '#9334E6', jenis: 'nonformal' }, { nama: 'Madrasah Salafiyah', warna: '#5F6368', jenis: 'nonformal' }
   ],
   asrama: ['Asrama Al-Ghazali', 'Asrama An-Nawawi', "Asrama Asy-Syafi'i", 'Asrama Al-Hasan', 'Asrama Al-Husain',
     'Asrama Fatimah Az-Zahra', 'Asrama Khadijah', 'Asrama Aisyah'],
@@ -58,6 +58,8 @@ export async function ensureSchema() {
   await sql`create table if not exists peta_alumni.pengaturan (
     kunci text primary key, nilai jsonb not null, updated_at timestamptz not null default now()
   )`;
+  await sql`alter table peta_alumni.alumni add column if not exists unit_nonformal text check (char_length(unit_nonformal) <= 60)`;
+  await sql`alter table peta_alumni.alumni alter column unit drop not null`;
   await sql`alter table peta_alumni.alumni add column if not exists negara text not null default 'Indonesia' check (char_length(negara) <= 60)`;
   schemaReady = true;
 }
@@ -66,6 +68,7 @@ export async function getSettings() {
   const rows = await sql`select kunci, nilai from peta_alumni.pengaturan`;
   const s = { ...DEFAULT_SETTINGS };
   for (const r of rows) if (r.kunci in DEFAULT_SETTINGS) s[r.kunci] = r.nilai;
+  s.unit = (s.unit || []).map((u) => ({ ...u, jenis: jenisUnit(u) }));
   return s;
 }
 
@@ -111,6 +114,13 @@ export function canonAsrama(v, list = []) {
   return hit ? { value: hit, known: true } : { value: tidy(v), known: false };
 }
 
+// Unit formal (MI, MTs, MA, SMK, …) atau non formal (Diniyah, Salafiyah, …)
+const NONFORMAL_RE = /diniyah|salafiyah|madin|tpq|tpa|tahfi[dz]h?|ma'?had|pengajian/i;
+export function jenisUnit(u) {
+  if (u && (u.jenis === 'formal' || u.jenis === 'nonformal')) return u.jenis;
+  return NONFORMAL_RE.test((u && u.nama) || '') ? 'nonformal' : 'formal';
+}
+
 export function str(v, max) {
   if (v === undefined || v === null) return null;
   const s = String(v).replace(/[\u0000-\u001f]/g, ' ').trim();
@@ -130,6 +140,7 @@ export function validateAlumni(body, opts = {}) {
     tahun_masuk: int(b.tahun_masuk),
     tahun_lulus: int(b.tahun_lulus),
     unit: str(b.unit, 60),
+    unit_nonformal: str(b.unit_nonformal, 60),
     asrama: str(b.asrama, 80),
     negara: str(b.negara, 60),
     provinsi: str(b.provinsi, 80),
@@ -144,7 +155,17 @@ export function validateAlumni(body, opts = {}) {
   if (!d.nama || d.nama.length < 2) return { error: 'Nama wajib diisi.' };
   if (!d.tahun_lulus || d.tahun_lulus < 1900 || d.tahun_lulus > year) return { error: 'Tahun lulus tidak valid.' };
   if (d.tahun_masuk && (d.tahun_masuk < 1900 || d.tahun_masuk > d.tahun_lulus)) return { error: 'Tahun masuk tidak valid.' };
-  if (!d.unit) return { error: 'Unit pendidikan wajib dipilih.' };
+  // Unit yang ternyata non formal (mis. data lama/CSV) dipindah ke kolom non formal
+  if (opts.unit && d.unit) {
+    const u = opts.unit.find((x) => x.nama.toLowerCase() === d.unit.toLowerCase());
+    if (u) d.unit = u.nama;
+    if (u && u.jenis === 'nonformal') { if (!d.unit_nonformal) d.unit_nonformal = u.nama; d.unit = null; }
+  }
+  if (opts.unit && d.unit_nonformal) {
+    const u = opts.unit.find((x) => x.nama.toLowerCase() === d.unit_nonformal.toLowerCase());
+    if (u) d.unit_nonformal = u.nama;
+  }
+  if (!d.unit && !d.unit_nonformal) return { error: 'Pilih minimal satu unit pendidikan (formal atau non formal).' };
   if (opts.asrama) {
     const a = canonAsrama(d.asrama, opts.asrama);
     if (!a.known && opts.strictAsrama) return { error: 'Pilih asrama dari daftar yang tersedia.' };
